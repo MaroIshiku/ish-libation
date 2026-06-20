@@ -429,14 +429,10 @@ async function readJsonBody(req) {
 
 async function getStatusPayload() {
   const dbPath = findDbPath();
-  const version = await runProcess(config.libationCli, ["--version"]).catch((error) => ({
-    code: 1,
-    stdout: "",
-    stderr: error.message
-  }));
+  const version = await getLibationVersion();
   return {
     app: "ish-libation",
-    libationVersion: version.stdout.trim() || version.stderr.trim() || null,
+    libationVersion: version,
     paths: {
       libationFilesDir: config.libationFilesDir,
       dbDir: config.dbDir,
@@ -446,6 +442,13 @@ async function getStatusPayload() {
     publicIp: publicIpCache,
     runningJobs: [...jobs.values()].filter((job) => job.status === "running").map((job) => serializeJob(job))
   };
+}
+
+async function getLibationVersion() {
+  const result = await runProcess(config.libationCli, ["--help"]).catch(() => null);
+  const output = `${result?.stdout || ""}\n${result?.stderr || ""}`;
+  const match = output.match(/LibationCli\s+v?[\d.]+/i);
+  return match?.[0] || "Libation CLI";
 }
 
 async function createJobFromBody(body) {
