@@ -50,7 +50,7 @@ ENV PUBLIC_IP_URL=https://api.ipify.org?format=json
 ENV PUBLIC_IP_INTERVAL_SECONDS=300
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl sqlite3 jq tini \
+    && apt-get install -y --no-install-recommends ca-certificates curl sqlite3 jq libicu72 tini \
     && groupadd --gid "${USER_GID}" libation \
     && useradd --uid "${USER_UID}" --gid "${USER_GID}" --create-home --shell /usr/sbin/nologin libation \
     && mkdir -p /app /libation /config /db /data \
