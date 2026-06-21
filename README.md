@@ -43,9 +43,15 @@ docker compose -f compose.yml up -d
 Recommended Gluetun mode:
 
 ```bash
-cp .env.example .env
-# fill in WIREGUARD_PRIVATE_KEY and WIREGUARD_ADDRESSES
 docker compose -f compose.gluetun.yml up -d
+```
+
+Before starting the Gluetun mode, replace the `INSERT_HERE` placeholders in `compose.gluetun.yml`:
+
+```yaml
+MULLVAD_ACCOUNT_ID: INSERT_HERE
+WIREGUARD_PRIVATE_KEY: INSERT_HERE
+WIREGUARD_ADDRESSES: INSERT_HERE
 ```
 
 In Gluetun mode the WebUI uses:
@@ -62,7 +68,7 @@ The Gluetun firewall must also allow the WebUI port. The provided compose file s
 FIREWALL_INPUT_PORTS: 3000
 ```
 
-For ZimaOS, the default runtime user is `PUID=0` and `PGID=0` to avoid bind-mount permission issues on `/DATA/...`. If your folders are owned by a specific user/group, set `PUID` and `PGID` in `.env`.
+For ZimaOS, the WebUI container runs as `0:0` to avoid bind-mount permission issues on `/media/ZimaOS-HD/...`.
 
 Open:
 
@@ -78,18 +84,17 @@ http://<zimaos-host>:3100
 | `/db` | Libation database |
 | `/data` | Downloaded books |
 
-## Environment
+## Fixed settings
 
-| Variable | Default | Purpose |
+| Setting | Value | Purpose |
 | --- | --- | --- |
 | `PORT` | `3000` | WebUI port inside the container |
-| `WEBUI_PORT` | `3100` | Host port exposed by Docker/ZimaOS |
-| `APP_DATA_DIR` | `/media/ZimaOS-HD/AppData/ish_libation` | Base path for config, db and Gluetun data |
-| `BOOKS_DIR` | `/media/ZimaOS-HD/AppData/ish_libation/data` | Host path for downloaded books |
-| `PUID` / `PGID` | `0` / `0` | Runtime user for bind-mount writes |
+| Host port | `3100` | Host port exposed by Docker/ZimaOS |
+| App data path | `/media/ZimaOS-HD/AppData/ish_libation` | Base path for config, db and Gluetun data |
+| Books path | `/media/ZimaOS-HD/AppData/ish_libation/data` | Host path for downloaded books |
+| Runtime user | `0:0` | Runtime user for bind-mount writes |
 | `LIBATION_FILES_DIR` | `/config` | Directory passed to Libation CLI |
 | `LIBATION_DB_DIR` | `/db` | Directory searched for `*.db` |
-| `LIBATION_DB_FILE` | empty | Optional explicit database filename |
 | `LIBATION_BOOKS_DIR` | `/data` | Download output directory |
 | `PUBLIC_IP_URL` | `https://api.ipify.org?format=json` | Public IP endpoint |
 | `PUBLIC_IP_INTERVAL_SECONDS` | `300` | Public IP refresh interval |

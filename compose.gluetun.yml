@@ -6,7 +6,7 @@ services:
     pull_policy: always
     container_name: ish-libation
     hostname: ish-libation
-    user: "${PUID:-0}:${PGID:-0}"
+    user: "0:0"
     cpu_shares: 90
     command: []
     restart: unless-stopped
@@ -18,29 +18,29 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${ISH_LIBATION_MEMORY_LIMIT:-16767905792}
+          memory: "16767905792"
         reservations:
           devices: []
     environment:
-      TZ: ${TZ:-Europe/Berlin}
+      TZ: Europe/Berlin
       PORT: 3000
       LIBATION_FILES_DIR: /config
       LIBATION_CONFIG_DIR: /config
       LIBATION_DB_DIR: /db
-      LIBATION_DB_FILE: ${LIBATION_DB_FILE:-}
+      LIBATION_DB_FILE: ""
       LIBATION_BOOKS_DIR: /data
-      PUBLIC_IP_URL: ${PUBLIC_IP_URL:-https://api.ipify.org?format=json}
-      PUBLIC_IP_INTERVAL_SECONDS: ${PUBLIC_IP_INTERVAL_SECONDS:-300}
+      PUBLIC_IP_URL: https://api.ipify.org?format=json
+      PUBLIC_IP_INTERVAL_SECONDS: 300
       NODE_ENV: production
     volumes:
       - type: bind
-        source: ${APP_DATA_DIR:-/media/ZimaOS-HD/AppData/ish_libation}/config
+        source: /media/ZimaOS-HD/AppData/ish_libation/config
         target: /config
       - type: bind
-        source: ${APP_DATA_DIR:-/media/ZimaOS-HD/AppData/ish_libation}/db
+        source: /media/ZimaOS-HD/AppData/ish_libation/db
         target: /db
       - type: bind
-        source: ${BOOKS_DIR:-/media/ZimaOS-HD/AppData/ish_libation/data}
+        source: /media/ZimaOS-HD/AppData/ish_libation/data
         target: /data
     devices: []
     cap_add: []
@@ -57,7 +57,7 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
-      icon: ${APP_ICON:-https://raw.githubusercontent.com/rmcrackan/Libation/master/Source/LibationAvalonia/Assets/libation.ico}
+      icon: https://raw.githubusercontent.com/rmcrackan/Libation/master/Source/LibationAvalonia/Assets/libation.ico
 
   gluetun:
     image: qmcgaw/gluetun:latest
@@ -76,29 +76,29 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${GLUETUN_MEMORY_LIMIT:-16767868928}
+          memory: "16767868928"
         reservations:
           devices: []
     environment:
-      TZ: ${TZ:-Europe/Berlin}
-      VPN_SERVICE_PROVIDER: ${VPN_SERVICE_PROVIDER:-mullvad}
-      VPN_TYPE: ${VPN_TYPE:-wireguard}
-      MULLVAD_ACCOUNT_ID: ${MULLVAD_ACCOUNT_ID:-}
-      WIREGUARD_PRIVATE_KEY: ${WIREGUARD_PRIVATE_KEY:?Set WIREGUARD_PRIVATE_KEY in ZimaOS environment}
-      WIREGUARD_ADDRESSES: ${WIREGUARD_ADDRESSES:?Set WIREGUARD_ADDRESSES in ZimaOS environment}
-      DNS_UPSTREAM_PLAIN_ADDRESSES: ${DNS_UPSTREAM_PLAIN_ADDRESSES:-10.64.0.1}
-      FIREWALL_INPUT_PORTS: ${FIREWALL_INPUT_PORTS:-3000}
-      FIREWALL_OUTBOUND_SUBNETS: ${FIREWALL_OUTBOUND_SUBNETS:-10.64.0.1/32}
-      HTTP_CONTROL_SERVER: ${HTTP_CONTROL_SERVER:-on}
-      HTTP_CONTROL_SERVER_ADDRESS: ${HTTP_CONTROL_SERVER_ADDRESS:-:8000}
-      LOG_LEVEL: ${GLUETUN_LOG_LEVEL:-info}
+      TZ: Europe/Berlin
+      VPN_SERVICE_PROVIDER: mullvad
+      VPN_TYPE: wireguard
+      MULLVAD_ACCOUNT_ID: INSERT_HERE
+      WIREGUARD_PRIVATE_KEY: INSERT_HERE
+      WIREGUARD_ADDRESSES: INSERT_HERE
+      DNS_UPSTREAM_PLAIN_ADDRESSES: 10.64.0.1
+      FIREWALL_INPUT_PORTS: 3000
+      FIREWALL_OUTBOUND_SUBNETS: 10.64.0.1/32
+      HTTP_CONTROL_SERVER: "on"
+      HTTP_CONTROL_SERVER_ADDRESS: ":8000"
+      LOG_LEVEL: info
     ports:
       - target: 3000
-        published: "${WEBUI_PORT:-3100}"
+        published: "3100"
         protocol: tcp
     volumes:
       - type: bind
-        source: ${APP_DATA_DIR:-/media/ZimaOS-HD/AppData/ish_libation}/gluetun
+        source: /media/ZimaOS-HD/AppData/ish_libation/gluetun
         target: /gluetun
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9999 >/dev/null 2>&1 || exit 1"]
@@ -118,10 +118,10 @@ x-casaos:
   author: self
   category: self
   hostname: ""
-  icon: ${APP_ICON:-https://raw.githubusercontent.com/rmcrackan/Libation/master/Source/LibationAvalonia/Assets/libation.ico}
+  icon: https://raw.githubusercontent.com/rmcrackan/Libation/master/Source/LibationAvalonia/Assets/libation.ico
   index: /
   is_uncontrolled: false
-  port_map: "${WEBUI_PORT:-3100}"
+  port_map: "3100"
   scheme: http
   store_app_id: ish-libation
   title:

@@ -4,25 +4,25 @@ services:
     pull_policy: always
     container_name: ish-libation
     hostname: ish-libation
-    user: "${PUID:-0}:${PGID:-0}"
+    user: "0:0"
     restart: unless-stopped
     environment:
-      TZ: ${TZ:-Europe/Berlin}
-      PORT: ${CONTAINER_PORT:-3000}
+      TZ: Europe/Berlin
+      PORT: 3000
       LIBATION_FILES_DIR: /config
       LIBATION_CONFIG_DIR: /config
       LIBATION_DB_DIR: /db
-      LIBATION_DB_FILE: ${LIBATION_DB_FILE:-}
+      LIBATION_DB_FILE: ""
       LIBATION_BOOKS_DIR: /data
-      PUBLIC_IP_URL: ${PUBLIC_IP_URL:-https://api.ipify.org?format=json}
-      PUBLIC_IP_INTERVAL_SECONDS: ${PUBLIC_IP_INTERVAL_SECONDS:-300}
+      PUBLIC_IP_URL: https://api.ipify.org?format=json
+      PUBLIC_IP_INTERVAL_SECONDS: 300
       NODE_ENV: production
     volumes:
-      - ${APP_DATA_DIR:-/media/ZimaOS-HD/AppData/ish_libation}/config:/config
-      - ${APP_DATA_DIR:-/media/ZimaOS-HD/AppData/ish_libation}/db:/db
-      - ${BOOKS_DIR:-/media/ZimaOS-HD/AppData/ish_libation/data}:/data
+      - /media/ZimaOS-HD/AppData/ish_libation/config:/config
+      - /media/ZimaOS-HD/AppData/ish_libation/db:/db
+      - /media/ZimaOS-HD/AppData/ish_libation/data:/data
     ports:
-      - "${WEBUI_PORT:-3100}:3000/tcp"
+      - "3100:3000/tcp"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
       interval: 30s
@@ -39,10 +39,10 @@ x-casaos:
   author: self
   category: self
   hostname: ""
-  icon: ${APP_ICON:-https://raw.githubusercontent.com/rmcrackan/Libation/master/Source/LibationAvalonia/Assets/libation.ico}
+  icon: https://raw.githubusercontent.com/rmcrackan/Libation/master/Source/LibationAvalonia/Assets/libation.ico
   index: /
   is_uncontrolled: false
-  port_map: "${WEBUI_PORT:-3100}"
+  port_map: "3100"
   scheme: http
   store_app_id: ish-libation
   title:
