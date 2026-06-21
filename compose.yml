@@ -18,11 +18,11 @@ services:
       PUBLIC_IP_INTERVAL_SECONDS: ${PUBLIC_IP_INTERVAL_SECONDS:-300}
       NODE_ENV: production
     volumes:
-      - ${APP_DATA_DIR:-/DATA/AppData/ish-libation}/config:/config
-      - ${APP_DATA_DIR:-/DATA/AppData/ish-libation}/db:/db
-      - ${BOOKS_DIR:-/DATA/Media/Audiobooks/Libation}:/data
+      - ${APP_DATA_DIR:-/media/ZimaOS-HD/AppData/ish_libation}/config:/config
+      - ${APP_DATA_DIR:-/media/ZimaOS-HD/AppData/ish_libation}/db:/db
+      - ${BOOKS_DIR:-/media/ZimaOS-HD/AppData/ish_libation/data}:/data
     ports:
-      - "${WEBUI_PORT:-3000}:3000/tcp"
+      - "${WEBUI_PORT:-3100}:3000/tcp"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
       interval: 30s
@@ -34,3 +34,17 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+x-casaos:
+  author: self
+  category: self
+  hostname: ""
+  icon: ${APP_ICON:-https://raw.githubusercontent.com/rmcrackan/Libation/master/Source/LibationAvalonia/Assets/libation.ico}
+  index: /
+  is_uncontrolled: false
+  port_map: "${WEBUI_PORT:-3100}"
+  scheme: http
+  store_app_id: ish-libation
+  title:
+    custom: Libation (Ish)
+    en_us: Libation (Ish)

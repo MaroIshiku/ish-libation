@@ -25,14 +25,14 @@ The included GitHub Actions workflow publishes multi-arch images to GHCR on push
 
 ## ZimaOS compose
 
-The compose files are ready for ZimaOS Docker apps and use persistent host paths below `/DATA` by default:
+The compose files are ready for ZimaOS Docker apps and use your ZimaOS storage paths by default:
 
 | Host path | Container path | Purpose |
 | --- | --- | --- |
-| `/DATA/AppData/ish-libation/config` | `/config` | Libation settings and accounts files |
-| `/DATA/AppData/ish-libation/db` | `/db` | Libation database |
-| `/DATA/AppData/ish-libation/gluetun` | `/gluetun` | Gluetun state and server data |
-| `/DATA/Media/Audiobooks/Libation` | `/data` | Downloaded books |
+| `/media/ZimaOS-HD/AppData/ish_libation/config` | `/config` | Libation settings and accounts files |
+| `/media/ZimaOS-HD/AppData/ish_libation/db` | `/db` | Libation database |
+| `/media/ZimaOS-HD/AppData/ish_libation/gluetun` | `/gluetun` | Gluetun state and server data |
+| `/media/ZimaOS-HD/AppData/ish_libation/data` | `/data` | Downloaded books |
 
 Direct mode without VPN:
 
@@ -55,6 +55,7 @@ network_mode: "service:gluetun"
 ```
 
 That means port `3000` is published on the `gluetun` service, not on `ish-libation`.
+This is a Docker limitation of `network_mode: service:gluetun`. The ZimaOS app metadata still points to `Libation (Ish)` and `ish-libation`; Gluetun is only the network sidecar.
 The Gluetun firewall must also allow the WebUI port. The provided compose file sets:
 
 ```yaml
@@ -66,7 +67,7 @@ For ZimaOS, the default runtime user is `PUID=0` and `PGID=0` to avoid bind-moun
 Open:
 
 ```text
-http://<zimaos-host>:3000
+http://<zimaos-host>:3100
 ```
 
 ## Volumes
@@ -82,9 +83,9 @@ http://<zimaos-host>:3000
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PORT` | `3000` | WebUI port inside the container |
-| `WEBUI_PORT` | `3000` | Host port exposed by Docker/ZimaOS |
-| `APP_DATA_DIR` | `/DATA/AppData/ish-libation` | Base path for config, db and Gluetun data |
-| `BOOKS_DIR` | `/DATA/Media/Audiobooks/Libation` | Host path for downloaded books |
+| `WEBUI_PORT` | `3100` | Host port exposed by Docker/ZimaOS |
+| `APP_DATA_DIR` | `/media/ZimaOS-HD/AppData/ish_libation` | Base path for config, db and Gluetun data |
+| `BOOKS_DIR` | `/media/ZimaOS-HD/AppData/ish_libation/data` | Host path for downloaded books |
 | `PUID` / `PGID` | `0` / `0` | Runtime user for bind-mount writes |
 | `LIBATION_FILES_DIR` | `/config` | Directory passed to Libation CLI |
 | `LIBATION_DB_DIR` | `/db` | Directory searched for `*.db` |
