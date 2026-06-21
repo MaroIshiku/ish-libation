@@ -135,7 +135,7 @@ function findDbPath() {
 }
 
 function cliArgs(args) {
-  return ["--libationFiles", config.libationFilesDir, ...args];
+  return args;
 }
 
 function runProcess(command, args, options = {}) {

@@ -58,9 +58,11 @@ function renderJobs() {
   $("#activeJobs").classList.toggle("empty", active.length === 0);
   $("#recentJobs").innerHTML = recent.length ? recent.map(jobItem).join("") : "Noch keine Jobs";
   $("#recentJobs").classList.toggle("empty", recent.length === 0);
+  const selectedId = $("#jobSelector").value || state.selectedJob?.id || "";
   $("#jobSelector").innerHTML = state.jobs.length
     ? state.jobs.map((job) => `<option value="${job.id}">${escapeHtml(job.label)} - ${job.status}</option>`).join("")
     : `<option value="">Keine Jobs</option>`;
+  if (selectedId && state.jobs.some((job) => job.id === selectedId)) $("#jobSelector").value = selectedId;
 }
 
 function jobItem(job) {
@@ -93,6 +95,7 @@ async function startAction(action, extra = {}) {
   });
   toast(`Job gestartet: ${job.label}`);
   await Promise.all([loadStatus(), loadJobs()]);
+  await focusJob(job.id, false);
 }
 
 async function loadLibrary() {
@@ -180,6 +183,19 @@ async function loadSelectedJobLogs() {
     : "Noch keine Logs";
 }
 
+function showView(viewId) {
+  $$(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.view === viewId));
+  $$(".view").forEach((view) => view.classList.toggle("active", view.id === viewId));
+}
+
+async function focusJob(id, switchToLogs = true) {
+  if (!id) return;
+  await loadJobs();
+  $("#jobSelector").value = id;
+  await loadSelectedJobLogs();
+  if (switchToLogs) showView("logs");
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -196,10 +212,7 @@ function escapeAttr(value) {
 function wireEvents() {
   $$(".tab").forEach((button) => {
     button.addEventListener("click", () => {
-      $$(".tab").forEach((tab) => tab.classList.remove("active"));
-      $$(".view").forEach((view) => view.classList.remove("active"));
-      button.classList.add("active");
-      $(`#${button.dataset.view}`).classList.add("active");
+      showView(button.dataset.view);
     });
   });
 
@@ -233,19 +246,19 @@ function wireEvents() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const body = Object.fromEntries(form.entries());
-    await api("/api/accounts/login-external", { method: "POST", body: JSON.stringify(body) });
+    const job = await api("/api/accounts/login-external", { method: "POST", body: JSON.stringify(body) });
     toast("Login Job gestartet");
-    await loadJobs();
+    await focusJob(job.id);
   });
   $("#importForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    await api("/api/accounts/import", {
+    const job = await api("/api/accounts/import", {
       method: "POST",
       body: JSON.stringify({ json: form.get("json") })
     });
     toast("Import Job gestartet");
-    await loadJobs();
+    await focusJob(job.id);
   });
 
   $("#loadSettingsButton").addEventListener("click", () => loadSettings().catch((error) => toast(error.message)));
