@@ -79,6 +79,8 @@ Open:
 http://<zimaos-host>:3100
 ```
 
+The header shows both versions, for example `LibationCli v13.5.0 | WebUI main @ 101222c`. If the WebUI commit does not change after an update, ZimaOS is still running an older image and the stack needs to be pulled/recreated.
+
 ## Volumes
 
 | Container path | Purpose |

@@ -10,6 +10,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, "..");
 
 const config = {
+  appVersion: process.env.ISH_LIBATION_VERSION || "dev",
+  appCommit: process.env.ISH_LIBATION_COMMIT || "unknown",
+  appBuildDate: process.env.ISH_LIBATION_BUILD_DATE || "unknown",
   port: Number(process.env.PORT || 3000),
   libationCli: process.env.LIBATION_CLI || "/libation/LibationCli",
   libationFilesDir: process.env.LIBATION_FILES_DIR || process.env.LIBATION_CONFIG_DIR || "/config",
@@ -443,6 +446,9 @@ async function getStatusPayload() {
   const version = await getLibationVersion();
   return {
     app: "ish-libation",
+    appVersion: config.appVersion,
+    appCommit: config.appCommit,
+    appBuildDate: config.appBuildDate,
     libationVersion: version,
     paths: {
       libationFilesDir: config.libationFilesDir,

@@ -43,7 +43,8 @@ function formatDate(value) {
 function renderStatus() {
   const status = state.status;
   if (!status) return;
-  $("#versionLine").textContent = status.libationVersion || "Libation CLI bereit";
+  const shortCommit = status.appCommit && status.appCommit !== "unknown" ? status.appCommit.slice(0, 7) : "local";
+  $("#versionLine").textContent = `${status.libationVersion || "Libation CLI bereit"} | WebUI ${status.appVersion || "dev"} @ ${shortCommit}`;
   $("#publicIp").textContent = status.publicIp?.ip || (status.publicIp?.error ? "Fehler" : "unbekannt");
   $("#jobCount").textContent = `${status.runningJobs.length} aktiv`;
   $("#configPath").textContent = status.paths.libationFilesDir;
