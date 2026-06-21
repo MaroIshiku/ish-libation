@@ -52,6 +52,7 @@ Before starting the Gluetun mode, replace the `INSERT_HERE` placeholders in `com
 MULLVAD_ACCOUNT_ID: INSERT_HERE
 WIREGUARD_PRIVATE_KEY: INSERT_HERE
 WIREGUARD_ADDRESSES: INSERT_HERE
+DNS_UPSTREAM_PLAIN_ADDRESSES: 10.64.0.1:53
 ```
 
 In Gluetun mode the WebUI uses:
@@ -68,7 +69,7 @@ The Gluetun firewall must also allow the WebUI port. The provided compose file s
 FIREWALL_INPUT_PORTS: 3000
 ```
 
-The compose file intentionally does not set `DNS_UPSTREAM_PLAIN_ADDRESSES`; Gluetun's own documentation recommends keeping the built-in DNS forwarding defaults instead of pointing plain DNS directly at a VPN-provider DNS address.
+The compose file uses `DNS_UPSTREAM_PLAIN_ADDRESSES`, the current Gluetun replacement for the older `DNS_ADDRESS` setting. The previous Mullvad DNS value is set as `10.64.0.1:53`.
 
 For ZimaOS, the WebUI container runs as `0:0` to avoid bind-mount permission issues on `/media/ZimaOS-HD/...`.
 
