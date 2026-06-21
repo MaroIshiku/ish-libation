@@ -177,6 +177,14 @@ main {
   margin-bottom: 16px;
 }
 
+.toolbar input {
+  flex: 1 1 260px;
+}
+
+.toolbar select {
+  flex: 0 1 180px;
+}
+
 .metrics {
   align-items: stretch;
 }
@@ -267,7 +275,7 @@ section {
 
 table {
   width: 100%;
-  min-width: 900px;
+  min-width: 980px;
   border-collapse: collapse;
 }
 
@@ -305,6 +313,21 @@ th {
 .row-actions button {
   min-height: 30px;
   padding: 0 9px;
+}
+
+.load-row {
+  display: flex;
+  justify-content: center;
+  padding: 14px 0 4px;
+}
+
+#loadMoreLibraryButton[disabled] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+#librarySentinel {
+  height: 1px;
 }
 
 .form-grid {

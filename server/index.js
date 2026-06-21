@@ -264,7 +264,7 @@ function selectColumn(columns, tableAlias, name, alias = name, fallback = "null"
   return columns.has(name) ? `${tableAlias}."${name}" as "${alias}"` : `${fallback} as "${alias}"`;
 }
 
-async function libraryQuery({ search = "", status = "all", limit = 100, offset = 0 }) {
+async function libraryQuery({ search = "", status = "all", sort = "title-asc", limit = 100, offset = 0 }) {
   const dbPath = findDbPath();
   if (!dbPath) return { dbPath: null, items: [], total: 0, warning: "No Libation database found yet." };
 
@@ -300,6 +300,7 @@ async function libraryQuery({ search = "", status = "all", limit = 100, offset =
   const whereSql = where.length ? `where ${where.join(" and ")}` : "";
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100));
   const safeOffset = Math.max(0, Number(offset) || 0);
+  const sortSql = librarySortSql(sort, { userCols, libraryCols, bookCols });
 
   const countRows = await sqliteJson(
     dbPath,
@@ -362,12 +363,36 @@ async function libraryQuery({ search = "", status = "all", limit = 100, offset =
       group by sb."BookId"
     ) series on series."BookId" = b."BookId"
     ${whereSql}
-    order by lower(b."Title")
+    order by ${sortSql}
     limit ${safeLimit} offset ${safeOffset};
     `
   );
 
   return { dbPath, items: rows, total: countRows[0]?.total || 0 };
+}
+
+function librarySortSql(sort, { userCols, libraryCols, bookCols }) {
+  const title = bookCols.has("Title") ? 'lower(b."Title")' : 'b."BookId"';
+  const asin = bookCols.has("AudibleProductId") ? 'lower(coalesce(b."AudibleProductId", \'\'))' : title;
+  const status = userCols.has("BookStatus") ? 'coalesce(udi."BookStatus", 0)' : "0";
+  const dateAdded = libraryCols.has("DateAdded") ? 'datetime(l."DateAdded")' : "null";
+  const contributors = "lower(coalesce(contrib.names, ''))";
+  const series = "lower(coalesce(series.names, ''))";
+
+  const sorts = {
+    "title-asc": `${title} asc, ${asin} asc`,
+    "title-desc": `${title} desc, ${asin} asc`,
+    "asin-asc": `${asin} asc, ${title} asc`,
+    "asin-desc": `${asin} desc, ${title} asc`,
+    "status-asc": `${status} asc, ${title} asc`,
+    "status-desc": `${status} desc, ${title} asc`,
+    "date-added-desc": `${dateAdded} desc, ${title} asc`,
+    "date-added-asc": `${dateAdded} asc, ${title} asc`,
+    "author-asc": `${contributors} asc, ${title} asc`,
+    "series-asc": `${series} asc, ${title} asc`
+  };
+
+  return sorts[sort] || sorts["title-asc"];
 }
 
 async function refreshPublicIp() {
@@ -637,6 +662,7 @@ async function handleApi(req, res, url) {
     const result = await libraryQuery({
       search: String(url.searchParams.get("search") || ""),
       status: String(url.searchParams.get("status") || "all"),
+      sort: String(url.searchParams.get("sort") || "title-asc"),
       limit: url.searchParams.get("limit"),
       offset: url.searchParams.get("offset")
     });

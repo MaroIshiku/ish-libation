@@ -76,6 +76,18 @@
             <option value="downloaded">Geladen</option>
             <option value="error">Fehler</option>
           </select>
+          <select id="librarySort">
+            <option value="title-asc">Name A-Z</option>
+            <option value="title-desc">Name Z-A</option>
+            <option value="asin-asc">ASIN A-Z</option>
+            <option value="asin-desc">ASIN Z-A</option>
+            <option value="status-asc">Status 0-9</option>
+            <option value="status-desc">Status 9-0</option>
+            <option value="date-added-desc">Neu hinzugefuegt</option>
+            <option value="date-added-asc">Alt hinzugefuegt</option>
+            <option value="author-asc">Autor A-Z</option>
+            <option value="series-asc">Serie A-Z</option>
+          </select>
           <button id="loadLibraryButton">Reload</button>
         </div>
         <div id="libraryMeta" class="note"></div>
@@ -87,12 +99,17 @@
                 <th>Autor / Serie</th>
                 <th>Status</th>
                 <th>ASIN</th>
+                <th>Hinzugefuegt</th>
                 <th>Aktionen</th>
               </tr>
             </thead>
             <tbody id="libraryRows"></tbody>
           </table>
         </div>
+        <div class="load-row">
+          <button id="loadMoreLibraryButton" class="secondary">Mehr laden</button>
+        </div>
+        <div id="librarySentinel" aria-hidden="true"></div>
       </section>
 
       <section id="accounts" class="view">

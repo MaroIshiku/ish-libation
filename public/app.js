@@ -3,7 +3,10 @@ const state = {
   jobs: [],
   selectedJob: null,
   libraryOffset: 0,
-  libraryLimit: 100
+  libraryLimit: 100,
+  libraryTotal: 0,
+  libraryItems: [],
+  libraryLoading: false
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -99,18 +102,60 @@ async function startAction(action, extra = {}) {
   await focusJob(job.id, false);
 }
 
-async function loadLibrary() {
+function resetLibrary() {
+  state.libraryOffset = 0;
+  state.libraryTotal = 0;
+  state.libraryItems = [];
+  $("#libraryRows").innerHTML = "";
+  $("#libraryMeta").textContent = "Library wird geladen...";
+  $("#loadMoreLibraryButton").disabled = true;
+}
+
+async function loadLibrary({ append = false } = {}) {
+  if (state.libraryLoading) return;
+  state.libraryLoading = true;
+  $("#loadMoreLibraryButton").disabled = true;
+  if (!append) resetLibrary();
+
   const params = new URLSearchParams({
     search: $("#librarySearch").value,
     status: $("#libraryStatus").value,
+    sort: $("#librarySort").value,
     limit: state.libraryLimit,
     offset: state.libraryOffset
   });
-  const result = await api(`/api/library?${params}`);
-  $("#libraryMeta").textContent = result.warning || `${result.total} Titel - DB: ${result.dbPath || "keine"}`;
-  $("#libraryRows").innerHTML = result.items.length
-    ? result.items.map(libraryRow).join("")
-    : `<tr><td colspan="5" class="empty">Keine Titel gefunden</td></tr>`;
+
+  try {
+    const result = await api(`/api/library?${params}`);
+    state.libraryTotal = result.total || 0;
+    state.libraryItems = append ? [...state.libraryItems, ...result.items] : result.items;
+    state.libraryOffset = state.libraryItems.length;
+    renderLibrary(result);
+  } finally {
+    state.libraryLoading = false;
+    updateLibraryLoadButton();
+  }
+}
+
+function renderLibrary(result = {}) {
+  const shown = state.libraryItems.length;
+  $("#libraryMeta").textContent = result.warning || `${shown} von ${state.libraryTotal} Titeln - DB: ${result.dbPath || "keine"}`;
+  $("#libraryRows").innerHTML = state.libraryItems.length
+    ? state.libraryItems.map(libraryRow).join("")
+    : `<tr><td colspan="6" class="empty">Keine Titel gefunden</td></tr>`;
+}
+
+function updateLibraryLoadButton() {
+  const button = $("#loadMoreLibraryButton");
+  const hasMore = state.libraryItems.length < state.libraryTotal;
+  button.disabled = state.libraryLoading || !hasMore;
+  button.textContent = state.libraryLoading
+    ? "Lade..."
+    : hasMore
+      ? `Mehr laden (${state.libraryItems.length}/${state.libraryTotal})`
+      : state.libraryTotal
+        ? `Alle geladen (${state.libraryTotal})`
+        : "Mehr laden";
 }
 
 function libraryRow(item) {
@@ -130,6 +175,7 @@ function libraryRow(item) {
         ${item.lastDownloaded ? `<br><small>${formatDate(item.lastDownloaded)}</small>` : ""}
       </td>
       <td><code>${escapeHtml(item.asin || "")}</code></td>
+      <td><small>${escapeHtml(formatDate(item.dateAdded) || "-")}</small></td>
       <td>
         <div class="row-actions">
           <button data-liberate="${escapeAttr(item.asin || "")}">Liberate</button>
@@ -228,10 +274,21 @@ function wireEvents() {
   });
 
   $("#loadLibraryButton").addEventListener("click", () => loadLibrary().catch((error) => toast(error.message)));
+  $("#loadMoreLibraryButton").addEventListener("click", () => loadLibrary({ append: true }).catch((error) => toast(error.message)));
   $("#librarySearch").addEventListener("keydown", (event) => {
     if (event.key === "Enter") loadLibrary().catch((error) => toast(error.message));
   });
   $("#libraryStatus").addEventListener("change", () => loadLibrary().catch((error) => toast(error.message)));
+  $("#librarySort").addEventListener("change", () => loadLibrary().catch((error) => toast(error.message)));
+
+  const libraryObserver = new IntersectionObserver((entries) => {
+    const active = $("#library").classList.contains("active");
+    const hasMore = state.libraryItems.length < state.libraryTotal;
+    if (active && hasMore && entries.some((entry) => entry.isIntersecting)) {
+      loadLibrary({ append: true }).catch((error) => toast(error.message));
+    }
+  }, { rootMargin: "360px" });
+  libraryObserver.observe($("#librarySentinel"));
 
   $("#libraryRows").addEventListener("click", async (event) => {
     const button = event.target.closest("button");
