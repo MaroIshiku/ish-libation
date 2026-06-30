@@ -3,16 +3,20 @@ import fssync from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, "..");
 
 const config = {
-  appVersion: process.env.ISH_LIBATION_VERSION || "dev",
-  appCommit: process.env.ISH_LIBATION_COMMIT || "unknown",
-  appBuildDate: process.env.ISH_LIBATION_BUILD_DATE || "unknown",
+  appId: "libiku",
+  appName: "Libiku",
+  appSubtitle: "Libation Web GUI",
+  appVersion: process.env.LIBIKU_VERSION || "dev",
+  appCommit: process.env.LIBIKU_COMMIT || "unknown",
+  appBuildDate: process.env.LIBIKU_BUILD_DATE || "unknown",
   port: Number(process.env.PORT || 3000),
   libationCli: process.env.LIBATION_CLI || "/libation/LibationCli",
   libationFilesDir: process.env.LIBATION_FILES_DIR || process.env.LIBATION_CONFIG_DIR || "/config",
@@ -20,11 +24,20 @@ const config = {
   dbFile: process.env.LIBATION_DB_FILE || "",
   booksDir: process.env.LIBATION_BOOKS_DIR || "/data",
   publicIpUrl: process.env.PUBLIC_IP_URL || "https://api.ipify.org?format=json",
-  publicIpIntervalSeconds: Number(process.env.PUBLIC_IP_INTERVAL_SECONDS || 300)
+  publicIpIntervalSeconds: Number(process.env.PUBLIC_IP_INTERVAL_SECONDS || 300),
+  authFile:
+    process.env.LIBIKU_AUTH_FILE ||
+    path.join(process.env.LIBATION_FILES_DIR || process.env.LIBATION_CONFIG_DIR || "/config", "LibikuAuth.json"),
+  setupSecretFile: process.env.ISHIKU_SETUP_SECRET_FILE || "/run/secrets/ishiku_setup_secret",
+  sessionCookie: "libiku_session",
+  sessionTtlSeconds: Number(process.env.LIBIKU_SESSION_TTL_SECONDS || 60 * 60 * 24 * 7)
 };
 
 const jobs = new Map();
+const sessions = new Map();
+const setupAttempts = new Map();
 const maxLogLines = 1200;
+const scryptAsync = promisify(scrypt);
 let publicIpCache = {
   ip: null,
   raw: null,
@@ -92,8 +105,294 @@ async function writeJsonFile(filePath, value) {
   await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
+function emptyAuthStore() {
+  return {
+    setupCompleted: false,
+    admins: [],
+    audit: [],
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  };
+}
+
+async function readAuthStore() {
+  const store = await readJsonFile(config.authFile, emptyAuthStore());
+  if (!store || typeof store !== "object" || Array.isArray(store)) return emptyAuthStore();
+  return {
+    ...emptyAuthStore(),
+    ...store,
+    admins: Array.isArray(store.admins) ? store.admins : [],
+    audit: Array.isArray(store.audit) ? store.audit.slice(-100) : []
+  };
+}
+
+async function writeAuthStore(store) {
+  await writeJsonFile(config.authFile, { ...store, updatedAt: nowIso() });
+}
+
+function hasAdmin(store) {
+  return store.setupCompleted === true && store.admins.length > 0;
+}
+
+async function getSetupSecretState() {
+  const explicitSecretFile = Boolean(process.env.ISHIKU_SETUP_SECRET_FILE);
+  try {
+    const raw = await fs.readFile(config.setupSecretFile, "utf8");
+    const secret = raw.trim();
+    if (secret) return { configured: true, source: "file", secret };
+    if (explicitSecretFile) {
+      return { configured: false, source: "file", error: "ISHIKU_SETUP_SECRET_FILE ist leer." };
+    }
+  } catch (error) {
+    if (explicitSecretFile) {
+      return { configured: false, source: "file", error: "ISHIKU_SETUP_SECRET_FILE kann nicht gelesen werden." };
+    }
+  }
+
+  const envSecret = process.env.ISHIKU_SETUP_SECRET?.trim();
+  if (envSecret) return { configured: true, source: "env", secret: envSecret };
+
+  return {
+    configured: false,
+    source: "missing",
+    error: "ISHIKU_SETUP_SECRET_FILE oder ISHIKU_SETUP_SECRET fehlt."
+  };
+}
+
+function publicSetupState(store, secretState) {
+  const required = !hasAdmin(store);
+  return {
+    required,
+    completed: hasAdmin(store),
+    configured: required ? secretState.configured : true,
+    error: required && !secretState.configured ? secretState.error : null
+  };
+}
+
+function secureCompare(value, expected) {
+  const left = createHash("sha256").update(String(value)).digest();
+  const right = createHash("sha256").update(String(expected)).digest();
+  return timingSafeEqual(left, right);
+}
+
+async function hashPassword(password) {
+  const salt = randomBytes(16).toString("hex");
+  const derived = await scryptAsync(password, salt, 64);
+  return `scrypt$${salt}$${Buffer.from(derived).toString("hex")}`;
+}
+
+async function verifyPassword(password, hash) {
+  const [algorithm, salt, encoded] = String(hash || "").split("$");
+  if (algorithm !== "scrypt" || !salt || !encoded) return false;
+  const derived = await scryptAsync(password, salt, 64);
+  const expected = Buffer.from(encoded, "hex");
+  if (expected.length !== derived.length) return false;
+  return timingSafeEqual(expected, Buffer.from(derived));
+}
+
+const placeholderPasswords = new Set(["admin", "password", "passwort", "changeme", "change-me", "123456", "123456789", "ishiku"]);
+
+function validateSetupInput(body, setupSecret) {
+  const displayName = String(body.displayName || body.admin_display_name || "").trim();
+  const username = String(body.username || body.admin_username || "").trim();
+  const email = String(body.email || body.admin_email || "").trim();
+  const password = String(body.password || body.admin_password || "");
+  const passwordConfirm = String(body.passwordConfirm || body.admin_password_confirm || "");
+  const normalizedPassword = password.trim().toLowerCase();
+  const errors = {};
+
+  if (!displayName) errors.displayName = "Anzeigename ist erforderlich.";
+  if (!username) errors.username = "Admin-Benutzername ist erforderlich.";
+  if (password.length < 12) errors.password = "Das Admin-Passwort muss mindestens 12 Zeichen lang sein.";
+  if (password && setupSecret && password === setupSecret) errors.password = "Das Admin-Passwort darf nicht dem Setup-Secret entsprechen.";
+  if (normalizedPassword && placeholderPasswords.has(normalizedPassword)) errors.password = "Bitte verwende kein Platzhalter-Passwort.";
+  if ([username.toLowerCase(), config.appId, config.appName.toLowerCase()].includes(normalizedPassword)) {
+    errors.password = "Das Admin-Passwort darf nicht Benutzername, App-ID oder App-Name sein.";
+  }
+  if (password !== passwordConfirm) errors.passwordConfirm = "Die Passwoerter stimmen nicht ueberein.";
+
+  return {
+    valid: Object.keys(errors).length === 0,
+    errors,
+    admin: { displayName, username, email }
+  };
+}
+
+function parseCookies(req) {
+  return Object.fromEntries(
+    String(req.headers.cookie || "")
+      .split(";")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const index = part.indexOf("=");
+        return index === -1 ? [part, ""] : [part.slice(0, index), decodeURIComponent(part.slice(index + 1))];
+      })
+  );
+}
+
+function getSession(req) {
+  const token = parseCookies(req)[config.sessionCookie];
+  if (!token) return null;
+  const session = sessions.get(token);
+  if (!session) return null;
+  if (session.expiresAt < Date.now()) {
+    sessions.delete(token);
+    return null;
+  }
+  return session;
+}
+
+function sessionCookie(token) {
+  return `${config.sessionCookie}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${config.sessionTtlSeconds}`;
+}
+
+function clearSessionCookie() {
+  return `${config.sessionCookie}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`;
+}
+
+function createSession(user) {
+  const token = randomBytes(32).toString("base64url");
+  const session = {
+    user,
+    expiresAt: Date.now() + config.sessionTtlSeconds * 1000
+  };
+  sessions.set(token, session);
+  return { token, session };
+}
+
+function publicUser(user) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    displayName: user.displayName,
+    username: user.username,
+    email: user.email || "",
+    role: user.role || "admin"
+  };
+}
+
+function clientKey(req) {
+  return String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "local").split(",")[0].trim();
+}
+
+function registerFailedSetupAttempt(req) {
+  const key = clientKey(req);
+  const now = Date.now();
+  const attempt = setupAttempts.get(key) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+  if (attempt.resetAt < now) {
+    attempt.count = 0;
+    attempt.resetAt = now + 15 * 60 * 1000;
+  }
+  attempt.count += 1;
+  setupAttempts.set(key, attempt);
+}
+
+function assertSetupRateLimit(req) {
+  const attempt = setupAttempts.get(clientKey(req));
+  if (attempt && attempt.resetAt > Date.now() && attempt.count >= 8) {
+    const error = new Error("Zu viele Setup-Versuche. Bitte spaeter erneut versuchen.");
+    error.status = 429;
+    throw error;
+  }
+}
+
+async function getSessionPayload(req) {
+  const store = await readAuthStore();
+  const secretState = hasAdmin(store) ? { configured: true } : await getSetupSecretState();
+  const session = getSession(req);
+  return {
+    app: {
+      id: config.appId,
+      name: config.appName,
+      subtitle: config.appSubtitle
+    },
+    authenticated: Boolean(session),
+    user: publicUser(session?.user),
+    setup: publicSetupState(store, secretState)
+  };
+}
+
+async function createFirstAdmin(req, res, body) {
+  assertSetupRateLimit(req);
+  const store = await readAuthStore();
+  if (hasAdmin(store)) {
+    const error = new Error("Setup ist bereits abgeschlossen.");
+    error.status = 409;
+    throw error;
+  }
+
+  const secretState = await getSetupSecretState();
+  if (!secretState.configured) {
+    const error = new Error(secretState.error || "Setup-Secret fehlt.");
+    error.status = 503;
+    throw error;
+  }
+
+  const submittedSecret = String(body.setupSecret || body.setup_secret || "");
+  if (!submittedSecret.trim() || !secureCompare(submittedSecret, secretState.secret)) {
+    registerFailedSetupAttempt(req);
+    const error = new Error("Setup-Secret ist ungueltig.");
+    error.status = 403;
+    throw error;
+  }
+
+  const validation = validateSetupInput(body, secretState.secret);
+  if (!validation.valid) {
+    const error = new Error("Setup-Eingaben sind ungueltig.");
+    error.status = 400;
+    error.details = validation.errors;
+    throw error;
+  }
+
+  const user = {
+    id: randomUUID(),
+    role: "admin",
+    ...validation.admin,
+    passwordHash: await hashPassword(String(body.password || body.admin_password || "")),
+    createdAt: nowIso()
+  };
+  const nextStore = {
+    ...store,
+    setupCompleted: true,
+    admins: [user],
+    audit: [...store.audit, { at: nowIso(), event: "setup_completed", userId: user.id }].slice(-100)
+  };
+  await writeAuthStore(nextStore);
+  const { token, session } = createSession(user);
+  return sendJson(res, 201, { authenticated: true, user: publicUser(session.user), setup: { required: false, completed: true } }, {
+    "Set-Cookie": sessionCookie(token)
+  });
+}
+
+async function login(req, res, body) {
+  const store = await readAuthStore();
+  if (!hasAdmin(store)) {
+    const error = new Error("Setup ist noch nicht abgeschlossen.");
+    error.status = 409;
+    throw error;
+  }
+  const username = String(body.username || "").trim();
+  const password = String(body.password || "");
+  const user = store.admins.find((admin) => admin.username.toLowerCase() === username.toLowerCase());
+  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    const error = new Error("Benutzername oder Passwort ist ungueltig.");
+    error.status = 401;
+    throw error;
+  }
+  const { token, session } = createSession(user);
+  return sendJson(res, 200, { authenticated: true, user: publicUser(session.user) }, {
+    "Set-Cookie": sessionCookie(token)
+  });
+}
+
 async function initializeLibationFiles() {
-  await Promise.all([ensureDir(config.libationFilesDir), ensureDir(config.dbDir), ensureDir(config.booksDir)]);
+  await Promise.all([
+    ensureDir(config.libationFilesDir),
+    ensureDir(config.dbDir),
+    ensureDir(config.booksDir),
+    ensureDir(path.dirname(config.authFile))
+  ]);
   await ensureJsonFile(path.join(config.libationFilesDir, "Settings.json"), {});
   await ensureJsonFile(path.join(config.libationFilesDir, "AccountsSettings.json"), {});
 
@@ -432,11 +731,12 @@ function serializeJob(job, includeLogs = false) {
   };
 }
 
-function sendJson(res, status, body) {
+function sendJson(res, status, body, extraHeaders = {}) {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
-    "Content-Length": Buffer.byteLength(payload)
+    "Content-Length": Buffer.byteLength(payload),
+    ...extraHeaders
   });
   res.end(payload);
 }
@@ -445,7 +745,8 @@ function sendError(res, error) {
   const status = error.status || 500;
   sendJson(res, status, {
     error: error.message || "Internal server error",
-    status
+    status,
+    details: error.details
   });
 }
 
@@ -470,7 +771,9 @@ async function getStatusPayload() {
   const dbPath = findDbPath();
   const version = await getLibationVersion();
   return {
-    app: "ish-libation",
+    app: config.appId,
+    appName: config.appName,
+    appSubtitle: config.appSubtitle,
     appVersion: config.appVersion,
     appCommit: config.appCommit,
     appBuildDate: config.appBuildDate,
@@ -483,6 +786,18 @@ async function getStatusPayload() {
     },
     publicIp: publicIpCache,
     runningJobs: [...jobs.values()].filter((job) => job.status === "running").map((job) => serializeJob(job))
+  };
+}
+
+async function getReadyPayload() {
+  const store = await readAuthStore();
+  const secretState = hasAdmin(store) ? { configured: true } : await getSetupSecretState();
+  return {
+    ok: true,
+    app: config.appId,
+    setupCompleted: hasAdmin(store),
+    setupConfigured: secretState.configured,
+    dbPath: findDbPath()
   };
 }
 
@@ -616,6 +931,28 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, { ok: true, at: nowIso() });
   }
 
+  if (method === "GET" && pathname === "/api/session") {
+    return sendJson(res, 200, await getSessionPayload(req));
+  }
+
+  if (method === "POST" && pathname === "/api/setup") {
+    return createFirstAdmin(req, res, await readJsonBody(req));
+  }
+
+  if (method === "POST" && pathname === "/api/login") {
+    return login(req, res, await readJsonBody(req));
+  }
+
+  if (method === "POST" && pathname === "/api/logout") {
+    const token = parseCookies(req)[config.sessionCookie];
+    if (token) sessions.delete(token);
+    return sendJson(res, 200, { ok: true }, { "Set-Cookie": clearSessionCookie() });
+  }
+
+  if (!getSession(req)) {
+    return sendJson(res, 401, { error: "Authentication required", status: 401 });
+  }
+
   if (method === "GET" && pathname === "/api/status") {
     return sendJson(res, 200, await getStatusPayload());
   }
@@ -718,11 +1055,13 @@ setInterval(refreshPublicIp, Math.max(60, config.publicIpIntervalSeconds) * 1000
 http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   try {
+    if (url.pathname === "/healthz") return sendJson(res, 200, { ok: true, at: nowIso(), app: config.appId });
+    if (url.pathname === "/readyz") return sendJson(res, 200, await getReadyPayload());
     if (url.pathname.startsWith("/api/")) await handleApi(req, res, url);
     else await serveStatic(req, res, url);
   } catch (error) {
     sendError(res, error);
   }
 }).listen(config.port, () => {
-  console.log(`ish-libation listening on :${config.port}`);
+  console.log(`${config.appName} listening on :${config.port}`);
 });

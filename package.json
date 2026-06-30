@@ -1,13 +1,13 @@
 {
-  "name": "ish-libation",
+  "name": "libiku",
   "version": "0.1.0",
   "private": true,
-  "description": "Docker-first WebUI for Libation CLI with ZimaOS and Gluetun friendly defaults.",
+  "description": "Docker-first Libation Web GUI in the Pixel Soft Utility design system.",
   "type": "module",
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "check": "node --check server/index.js"
+    "check": "node --check server/index.js && node --check public/app.js && node --check public/design-system/app-shell.js && node --check public/design-system/theme-controller.js && node --check public/design-system/setup-flow.js"
   },
   "dependencies": {},
   "engines": {

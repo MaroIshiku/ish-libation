@@ -1,10 +1,10 @@
-name: ish-libation
+name: libiku
 
 services:
-  ish-libation:
-    image: ghcr.io/maroishiku/ish-libation:latest
+  libiku:
+    image: ghcr.io/maroishiku/libiku:latest
     pull_policy: always
-    container_name: ish-libation
+    container_name: libiku
     user: "0:0"
     cpu_shares: 90
     command: []
@@ -23,6 +23,8 @@ services:
     environment:
       TZ: Europe/Berlin
       PORT: 3000
+      ISHIKU_SETUP_SECRET_FILE: /run/secrets/ishiku_setup_secret
+      LIBIKU_AUTH_FILE: /config/LibikuAuth.json
       LIBATION_FILES_DIR: /config
       LIBATION_CONFIG_DIR: /config
       LIBATION_DB_DIR: /db
@@ -31,21 +33,23 @@ services:
       PUBLIC_IP_URL: https://api.ipify.org?format=json
       PUBLIC_IP_INTERVAL_SECONDS: 300
       NODE_ENV: production
+    secrets:
+      - ishiku_setup_secret
     volumes:
       - type: bind
-        source: /media/ZimaOS-HD/AppData/ish_libation/config
+        source: /media/ZimaOS-HD/AppData/libiku/config
         target: /config
       - type: bind
-        source: /media/ZimaOS-HD/AppData/ish_libation/db
+        source: /media/ZimaOS-HD/AppData/libiku/db
         target: /db
       - type: bind
-        source: /media/ZimaOS-HD/AppData/ish_libation/data
+        source: /media/ZimaOS-HD/AppData/libiku/data
         target: /data
     devices: []
     cap_add: []
     privileged: false
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/healthz >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -56,13 +60,13 @@ services:
         max-size: "10m"
         max-file: "3"
     labels:
-      icon: https://raw.githubusercontent.com/rmcrackan/Libation/master/Source/LibationAvalonia/Assets/libation.ico
+      icon: https://raw.githubusercontent.com/MaroIshiku/libiku/main/public/assets/logos/libiku.png
 
   gluetun:
     image: qmcgaw/gluetun:latest
     pull_policy: always
-    container_name: ishlibgt
-    hostname: ishlibgt
+    container_name: libikugt
+    hostname: libikugt
     cpu_shares: 90
     command: []
     restart: unless-stopped
@@ -97,7 +101,7 @@ services:
         protocol: tcp
     volumes:
       - type: bind
-        source: /media/ZimaOS-HD/AppData/ish_libation/gluetun
+        source: /media/ZimaOS-HD/AppData/libiku/gluetun
         target: /gluetun
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9999 >/dev/null 2>&1 || exit 1"]
@@ -113,16 +117,20 @@ services:
     labels:
       icon: https://icon.casaos.io/main/all/gluetun.png
 
+secrets:
+  ishiku_setup_secret:
+    file: ./secrets/setup_secret.txt
+
 x-casaos:
   author: self
   category: self
   hostname: ""
-  icon: https://raw.githubusercontent.com/rmcrackan/Libation/master/Source/LibationAvalonia/Assets/libation.ico
+  icon: https://raw.githubusercontent.com/MaroIshiku/libiku/main/public/assets/logos/libiku.png
   index: /
   is_uncontrolled: false
   port_map: "3100"
   scheme: http
-  store_app_id: ish-libation
+  store_app_id: libiku
   title:
-    custom: Libation (Ish)
-    en_us: Libation (Ish)
+    custom: Libiku
+    en_us: Libiku

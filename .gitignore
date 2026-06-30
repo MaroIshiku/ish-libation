@@ -4,9 +4,14 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
+secrets/
+*.sqlite
+*.sqlite3
+LibikuAuth.json
 data/
 config/
 db/
+logs/
 *.db
 *.db-shm
 *.db-wal

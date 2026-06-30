@@ -1,9 +1,14 @@
 .git
 node_modules
 npm-debug.log*
+secrets
 data
 config
 db
+logs
+LibikuAuth.json
+*.sqlite
+*.sqlite3
 *.db
 *.db-shm
 *.db-wal

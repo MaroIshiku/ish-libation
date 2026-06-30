@@ -1,13 +1,30 @@
+import { initPixelSoftUtilityApp } from "./design-system/app-shell.js";
+import { setPixelSoftUtilityMode, setPixelSoftUtilityTheme } from "./design-system/theme-controller.js";
+import { bindRegisterWindow } from "./design-system/setup-flow.js";
+
 const state = {
+  manifest: null,
+  session: null,
   status: null,
   jobs: [],
   selectedJob: null,
   libraryOffset: 0,
-  libraryLimit: 100,
+  libraryLimit: 80,
   libraryTotal: 0,
   libraryItems: [],
-  libraryLoading: false
+  libraryLoading: false,
+  currentView: "dashboard"
 };
+
+const themeLabels = {
+  lavender: "Lavender",
+  mint: "Mint",
+  sky: "Sky",
+  amber: "Amber",
+  rose: "Rose",
+  graphite: "Graphite"
+};
+const modeLabels = { system: "System", light: "Light", dark: "Dark" };
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -19,7 +36,15 @@ async function api(path, options = {}) {
   });
   const text = await response.text();
   const body = text ? JSON.parse(text) : null;
-  if (!response.ok) throw new Error(body?.error || response.statusText);
+  if (response.status === 401) {
+    await refreshSession();
+    renderAuthGate();
+  }
+  if (!response.ok) {
+    const error = new Error(body?.error || response.statusText);
+    error.details = body?.details;
+    throw error;
+  }
   return body;
 }
 
@@ -31,37 +56,268 @@ function toast(message) {
   toast.timer = setTimeout(() => element.classList.remove("visible"), 3200);
 }
 
-function formatStatus(status) {
-  if (status === 1) return ["Geladen", "ok"];
-  if (status === 2) return ["Fehler", "error"];
-  return ["Nicht geladen", "warn"];
+async function injectIconSprite() {
+  const target = $("#iconSprite");
+  if (!target) return;
+  target.innerHTML = await fetch("/icons/psu-icons.svg").then((response) => response.text()).catch(() => "");
 }
 
-function formatDate(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+async function loadManifest() {
+  state.manifest = await fetch("/app.manifest.json").then((response) => response.json());
+  let configScript = document.querySelector("script[type='application/json'][data-psu-app-config]");
+  if (!configScript) {
+    configScript = document.createElement("script");
+    configScript.type = "application/json";
+    configScript.dataset.psuAppConfig = "";
+    document.head.append(configScript);
+  }
+  configScript.textContent = JSON.stringify(state.manifest);
+  initPixelSoftUtilityApp(state.manifest);
+}
+
+async function refreshSession() {
+  state.session = await api("/api/session");
+  return state.session;
+}
+
+function renderAuthGate() {
+  const authRoot = $("#authRoot");
+  const appRoot = $("#appRoot");
+  const session = state.session;
+  if (!session) return;
+
+  if (session.authenticated) {
+    authRoot.innerHTML = "";
+    authRoot.hidden = true;
+    appRoot.hidden = false;
+    const displayName = session.user?.displayName || session.user?.username || "Admin";
+    $("#signedInUser").textContent = displayName;
+    $("#profileButton").textContent = displayName.trim().slice(0, 1).toUpperCase() || "A";
+    return;
+  }
+
+  appRoot.hidden = true;
+  authRoot.hidden = false;
+
+  if (session.setup.required && !session.setup.configured) {
+    authRoot.innerHTML = setupErrorTemplate(session.setup.error);
+    return;
+  }
+
+  if (session.setup.required) {
+    authRoot.innerHTML = registerTemplate();
+    const setupSecret = $("#setup_secret");
+    setupSecret?.focus();
+    bindRegisterWindow($("#setupForm"), {
+      appId: state.manifest.app_id,
+      appName: state.manifest.app_name,
+      onSubmit: async (data, form) => {
+        setFormBusy(form, true);
+        try {
+          const payload = {
+            setupSecret: data.get("setup_secret"),
+            displayName: data.get("admin_display_name"),
+            username: data.get("admin_username"),
+            email: data.get("admin_email"),
+            password: data.get("admin_password"),
+            passwordConfirm: data.get("admin_password_confirm")
+          };
+          state.session = await api("/api/setup", { method: "POST", body: JSON.stringify(payload) });
+          toast("Adminaccount erstellt");
+          renderAuthGate();
+          await loadAppData();
+        } catch (error) {
+          renderFormErrors(form, error.details);
+          toast(error.message);
+        } finally {
+          setFormBusy(form, false);
+        }
+      }
+    });
+    return;
+  }
+
+  authRoot.innerHTML = loginTemplate();
+  $("#auth_username")?.focus();
+  $("#authForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setFormBusy(form, true);
+    try {
+      state.session = await api("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ username: data.get("username"), password: data.get("password") })
+      });
+      toast("Angemeldet");
+      renderAuthGate();
+      await loadAppData();
+    } catch (error) {
+      $("#authError").textContent = error.message;
+      $("#authError").hidden = false;
+    } finally {
+      setFormBusy(form, false);
+    }
+  });
+}
+
+function setupBrand() {
+  return `
+    <div class="psu-setup-brand">
+      <div class="psu-setup-logo">
+        <img src="${escapeAttr(state.manifest.app_logo.src)}" alt="Libiku Logo" />
+      </div>
+      <div>
+        <h1 class="psu-setup-title">${escapeHtml(state.manifest.app_name)}</h1>
+        <p class="psu-setup-subtitle">${escapeHtml(state.manifest.app_subtitle)}</p>
+      </div>
+    </div>
+  `;
+}
+
+function setupErrorTemplate(message) {
+  return `
+    <main class="psu-setup-screen">
+      <section class="psu-setup-error-window">
+        ${setupBrand()}
+        <article class="psu-tonal-card">
+          <h2 class="psu-card-title">Setup wartet auf ein Secret</h2>
+          <p class="psu-card-text">Lege ein Docker Secret an oder setze den lokalen Fallback, bevor der erste Adminaccount erstellt wird.</p>
+        </article>
+        <article class="psu-technical-card setup-technical-card">
+          <span class="psu-label">Fehlende Konfiguration</span>
+          <div class="psu-technical-value">${escapeHtml(message || "ISHIKU_SETUP_SECRET_FILE oder ISHIKU_SETUP_SECRET")}</div>
+        </article>
+      </section>
+    </main>
+  `;
+}
+
+function registerTemplate() {
+  return `
+    <main class="psu-setup-screen">
+      <section class="psu-register-window" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+        ${setupBrand()}
+        <form id="setupForm" class="psu-form-stack" data-app-id="libiku" data-app-name="Libiku">
+          <h2 id="setupTitle" class="center-title">Admin einrichten</h2>
+          ${fieldTemplate("setup_secret", "Setup-Secret", "password", "one-time-code")}
+          ${fieldTemplate("admin_display_name", "Anzeigename", "text", "name")}
+          ${fieldTemplate("admin_username", "Admin-Benutzername", "text", "username")}
+          ${fieldTemplate("admin_email", "E-Mail optional", "email", "email", false)}
+          ${fieldTemplate("admin_password", "Admin-Passwort", "password", "new-password")}
+          ${fieldTemplate("admin_password_confirm", "Passwort wiederholen", "password", "new-password")}
+          <div class="psu-password-requirements">
+            <strong>Passwortregeln</strong>
+            <ul>
+              <li>Mindestens 12 Zeichen.</li>
+              <li>Nicht identisch mit Setup-Secret, Benutzername, App-ID oder App-Name.</li>
+              <li>Keine Platzhalter wie admin, password oder changeme.</li>
+            </ul>
+          </div>
+          <div class="psu-setup-actions">
+            <button class="psu-button psu-button--filled" type="submit">Adminaccount erstellen</button>
+          </div>
+          <p class="psu-setup-footnote">Nach dem Erstellen wird die Registrierung automatisch geschlossen.</p>
+        </form>
+      </section>
+    </main>
+  `;
+}
+
+function loginTemplate() {
+  return `
+    <main class="psu-setup-screen">
+      <section class="psu-auth-window" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+        ${setupBrand()}
+        <form id="authForm" class="psu-form-stack">
+          <h2 id="loginTitle" class="center-title">Admin Login</h2>
+          ${fieldTemplate("username", "Admin-Benutzername", "text", "username", true, "auth_username")}
+          ${fieldTemplate("password", "Passwort", "password", "current-password", true, "auth_password")}
+          <p id="authError" class="psu-field-error" hidden></p>
+          <div class="psu-setup-actions">
+            <button class="psu-button psu-button--filled" type="submit">Anmelden</button>
+          </div>
+        </form>
+      </section>
+    </main>
+  `;
+}
+
+function fieldTemplate(name, label, type, autocomplete, required = true, id = name) {
+  return `
+    <label class="psu-field">
+      <span class="psu-label">${label}</span>
+      <input id="${id}" class="psu-input" name="${name}" type="${type}" autocomplete="${autocomplete}" ${required ? "required" : ""} aria-invalid="false" />
+      <span class="psu-field-error" data-field-error="${name}" hidden></span>
+    </label>
+  `;
+}
+
+function setFormBusy(form, busy) {
+  form.querySelectorAll("button, input, textarea, select").forEach((control) => {
+    control.disabled = busy;
+  });
+}
+
+function renderFormErrors(form, errors = {}) {
+  if (!errors) return;
+  const map = {
+    displayName: "admin_display_name",
+    username: "admin_username",
+    email: "admin_email",
+    password: "admin_password",
+    passwordConfirm: "admin_password_confirm"
+  };
+  Object.entries(errors).forEach(([key, value]) => {
+    const name = map[key] || key;
+    const input = form.querySelector(`[name="${cssEscape(name)}"]`);
+    const error = form.querySelector(`[data-field-error="${cssEscape(name)}"]`);
+    if (input) input.setAttribute("aria-invalid", "true");
+    if (error) {
+      error.textContent = value;
+      error.hidden = false;
+    }
+  });
 }
 
 function renderStatus() {
   const status = state.status;
   if (!status) return;
-  const shortCommit = status.appCommit && status.appCommit !== "unknown" ? status.appCommit.slice(0, 7) : "local";
-  $("#versionLine").textContent = `${status.libationVersion || "Libation CLI bereit"} | WebUI ${status.appVersion || "dev"} @ ${shortCommit}`;
+  const activeJobs = status.runningJobs?.length || 0;
+  $("#heroStatus").textContent = `${status.libationVersion || "Libation CLI"} ist bereit. ${activeJobs} Job${activeJobs === 1 ? "" : "s"} aktiv.`;
   $("#publicIp").textContent = status.publicIp?.ip || (status.publicIp?.error ? "Fehler" : "unbekannt");
-  $("#jobCount").textContent = `${status.runningJobs.length} aktiv`;
-  $("#configPath").textContent = status.paths.libationFilesDir;
-  $("#dbPath").textContent = status.paths.dbPath || "noch keine DB";
-  $("#booksPath").textContent = status.paths.booksDir;
+  $("#jobCount").textContent = String(activeJobs);
+  renderDiagnostics();
+}
+
+function renderDiagnostics() {
+  const status = state.status;
+  if (!status) return;
+  const rows = [
+    ["App", `${status.appName || "Libiku"} ${status.appVersion || "dev"}`],
+    ["Libation", status.libationVersion || "Libation CLI"],
+    ["Build", status.appBuildDate || "unknown"],
+    ["Commit", status.appCommit || "unknown"],
+    ["Config", status.paths?.libationFilesDir || "-"],
+    ["Database", status.paths?.dbPath || status.paths?.dbDir || "-"],
+    ["Books", status.paths?.booksDir || "-"],
+    ["Health", "ok"]
+  ];
+  $("#diagnosticsList").innerHTML = rows.map(([label, value]) => `
+    <div class="technical-row">
+      <span>${escapeHtml(label)}</span>
+      <code>${escapeHtml(value)}</code>
+    </div>
+  `).join("");
 }
 
 function renderJobs() {
   const active = state.jobs.filter((job) => job.status === "running");
   const recent = state.jobs.slice(0, 8);
   $("#activeJobs").innerHTML = active.length ? active.map(jobItem).join("") : "Keine aktiven Jobs";
-  $("#activeJobs").classList.toggle("empty", active.length === 0);
+  $("#activeJobs").classList.toggle("empty-state", active.length === 0);
   $("#recentJobs").innerHTML = recent.length ? recent.map(jobItem).join("") : "Noch keine Jobs";
-  $("#recentJobs").classList.toggle("empty", recent.length === 0);
+  $("#recentJobs").classList.toggle("empty-state", recent.length === 0);
   const selectedId = $("#jobSelector").value || state.selectedJob?.id || "";
   $("#jobSelector").innerHTML = state.jobs.length
     ? state.jobs.map((job) => `<option value="${job.id}">${escapeHtml(job.label)} - ${job.status}</option>`).join("")
@@ -72,10 +328,10 @@ function renderJobs() {
 function jobItem(job) {
   const klass = job.status === "succeeded" ? "ok" : job.status === "failed" ? "error" : "warn";
   return `
-    <article class="item">
+    <article class="list-card">
       <div class="item-row">
         <strong>${escapeHtml(job.label)}</strong>
-        <span class="pill ${klass}">${job.status}</span>
+        <span class="status-chip ${klass}">${escapeHtml(job.status)}</span>
       </div>
       <small>${formatDate(job.startedAt)}${job.finishedAt ? ` bis ${formatDate(job.finishedAt)}` : ""}</small>
     </article>
@@ -106,7 +362,7 @@ function resetLibrary() {
   state.libraryOffset = 0;
   state.libraryTotal = 0;
   state.libraryItems = [];
-  $("#libraryRows").innerHTML = "";
+  $("#libraryRows").innerHTML = `<article class="psu-card empty-state">Library wird geladen...</article>`;
   $("#libraryMeta").textContent = "Library wird geladen...";
   $("#loadMoreLibraryButton").disabled = true;
 }
@@ -139,10 +395,11 @@ async function loadLibrary({ append = false } = {}) {
 
 function renderLibrary(result = {}) {
   const shown = state.libraryItems.length;
-  $("#libraryMeta").textContent = result.warning || `${shown} von ${state.libraryTotal} Titeln - DB: ${result.dbPath || "keine"}`;
+  $("#libraryCount").textContent = String(state.libraryTotal || 0);
+  $("#libraryMeta").textContent = result.warning || `${shown} von ${state.libraryTotal} Titeln`;
   $("#libraryRows").innerHTML = state.libraryItems.length
-    ? state.libraryItems.map(libraryRow).join("")
-    : `<tr><td colspan="6" class="empty">Keine Titel gefunden</td></tr>`;
+    ? state.libraryItems.map(libraryCard).join("")
+    : emptyState("Keine Titel gefunden", "Refresh liest die aktuelle Libation-Datenbank ein.");
 }
 
 function updateLibraryLoadButton() {
@@ -158,33 +415,46 @@ function updateLibraryLoadButton() {
         : "Mehr laden";
 }
 
-function libraryRow(item) {
+function libraryCard(item) {
   const [label, klass] = formatStatus(item.bookStatus);
-  const subtitle = item.subtitle ? `<div class="book-subtitle">${escapeHtml(item.subtitle)}</div>` : "";
+  const subtitle = item.subtitle ? `<p class="book-subtitle">${escapeHtml(item.subtitle)}</p>` : "";
   const meta = [item.contributors, item.series].filter(Boolean).map(escapeHtml).join("<br>");
   return `
-    <tr>
-      <td>
-        <div class="book-title">${escapeHtml(item.title || "Ohne Titel")}</div>
-        ${subtitle}
-        <small>${item.lengthInMinutes || 0} min ${item.locale ? `- ${escapeHtml(item.locale)}` : ""}</small>
-      </td>
-      <td>${meta || "<span class='empty'>-</span>"}</td>
-      <td>
-        <span class="pill ${klass}">${label}</span>
-        ${item.lastDownloaded ? `<br><small>${formatDate(item.lastDownloaded)}</small>` : ""}
-      </td>
-      <td><code>${escapeHtml(item.asin || "")}</code></td>
-      <td><small>${escapeHtml(formatDate(item.dateAdded) || "-")}</small></td>
-      <td>
-        <div class="row-actions">
-          <button data-liberate="${escapeAttr(item.asin || "")}">Liberate</button>
-          <button class="secondary" data-force="${escapeAttr(item.asin || "")}">Force</button>
-          <button class="secondary" data-pdf="${escapeAttr(item.asin || "")}">PDF</button>
-          <button class="secondary" data-status="${escapeAttr(item.asin || "")}">Status</button>
+    <article class="psu-card book-card">
+      <div class="book-card-main">
+        <div>
+          <h3>${escapeHtml(item.title || "Ohne Titel")}</h3>
+          ${subtitle}
+          <p class="book-meta">${meta || "Autor / Serie unbekannt"}</p>
         </div>
-      </td>
-    </tr>
+        <span class="status-chip ${klass}">${label}</span>
+      </div>
+      <div class="book-details">
+        <code>${escapeHtml(item.asin || "")}</code>
+        <span>${item.lengthInMinutes || 0} min</span>
+        <span>${escapeHtml(formatDate(item.dateAdded) || "-")}</span>
+      </div>
+      <div class="book-actions">
+        <button class="psu-button psu-button--filled" type="button" data-liberate="${escapeAttr(item.asin || "")}">Liberate</button>
+        <button class="psu-button psu-button--tonal" type="button" data-force="${escapeAttr(item.asin || "")}">Force</button>
+        <button class="psu-button psu-button--outlined" type="button" data-pdf="${escapeAttr(item.asin || "")}">PDF</button>
+        <button class="psu-button psu-button--text" type="button" data-status="${escapeAttr(item.asin || "")}">Status</button>
+      </div>
+    </article>
+  `;
+}
+
+function emptyState(title, hint) {
+  return `
+    <article class="psu-tonal-card empty-panel">
+      <div class="psu-logo-frame small-logo">
+        <img src="${escapeAttr(state.manifest.app_logo.src)}" alt="Libiku Logo" />
+      </div>
+      <div>
+        <h3>${escapeHtml(title)}</h3>
+        <p>${escapeHtml(hint)}</p>
+      </div>
+    </article>
   `;
 }
 
@@ -192,16 +462,16 @@ async function loadAccounts() {
   const result = await api("/api/accounts");
   $("#accountsList").innerHTML = result.accounts.length
     ? result.accounts.map((account) => `
-      <article class="item">
+      <article class="list-card">
         <div class="item-row">
           <strong>${escapeHtml(account.name || account.id)}</strong>
-          <span class="pill ${account.authenticated ? "ok" : "error"}">${account.authenticated ? "auth" : "login needed"}</span>
+          <span class="status-chip ${account.authenticated ? "ok" : "error"}">${account.authenticated ? "auth" : "login needed"}</span>
         </div>
         <small>${escapeHtml(account.id || "")} - ${escapeHtml(account.locale || "")} - scan: ${account.scanLibrary ? "yes" : "no"}</small>
       </article>
     `).join("")
     : "Keine Accounts konfiguriert";
-  $("#accountsList").classList.toggle("empty", result.accounts.length === 0);
+  $("#accountsList").classList.toggle("empty-state", result.accounts.length === 0);
 }
 
 async function loadSettings() {
@@ -231,16 +501,155 @@ async function loadSelectedJobLogs() {
 }
 
 function showView(viewId) {
-  $$(".tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.view === viewId));
-  $$(".view").forEach((view) => view.classList.toggle("active", view.id === viewId));
+  state.currentView = viewId;
+  $$(".app-view").forEach((view) => view.classList.toggle("is-active", view.dataset.view === viewId));
+  $$("[data-nav]").forEach((button) => {
+    if (button.dataset.nav === viewId) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-async function focusJob(id, switchToLogs = true) {
+async function focusJob(id, switchToSettings = true) {
   if (!id) return;
   await loadJobs();
   $("#jobSelector").value = id;
   await loadSelectedJobLogs();
-  if (switchToLogs) showView("logs");
+  if (switchToSettings) showView("settings");
+}
+
+function renderThemeControls() {
+  const theme = document.documentElement.dataset.theme || state.manifest.default_theme || "mint";
+  const mode = document.documentElement.dataset.mode || state.manifest.default_mode || "system";
+  $$("[data-theme-picker]").forEach((container) => {
+    container.innerHTML = Object.entries(themeLabels).map(([value, label]) => `
+      <button class="psu-chip" type="button" data-theme-choice="${value}" aria-pressed="${value === theme}">
+        ${label}
+      </button>
+    `).join("");
+  });
+  $$("[data-mode-picker]").forEach((container) => {
+    container.innerHTML = Object.entries(modeLabels).map(([value, label]) => `
+      <button type="button" data-mode-choice="${value}" aria-selected="${value === mode}">${label}</button>
+    `).join("");
+  });
+}
+
+function wireEvents() {
+  document.addEventListener("click", async (event) => {
+    const actionButton = event.target.closest("[data-action]");
+    const navButton = event.target.closest("[data-nav]");
+    const viewButton = event.target.closest("[data-go-view]");
+    const themeButton = event.target.closest("[data-theme-choice]");
+    const modeButton = event.target.closest("[data-mode-choice]");
+    const libraryButton = event.target.closest("#libraryRows button");
+
+    try {
+      if (actionButton) await startAction(actionButton.dataset.action);
+      if (navButton) showView(navButton.dataset.nav);
+      if (viewButton) showView(viewButton.dataset.goView);
+      if (themeButton) {
+        setPixelSoftUtilityTheme(themeButton.dataset.themeChoice);
+        renderThemeControls();
+      }
+      if (modeButton) {
+        setPixelSoftUtilityMode(modeButton.dataset.modeChoice);
+        renderThemeControls();
+      }
+      if (libraryButton?.dataset.liberate) await startAction("liberate", { asin: libraryButton.dataset.liberate });
+      if (libraryButton?.dataset.force) await startAction("liberate", { asin: libraryButton.dataset.force, force: true });
+      if (libraryButton?.dataset.pdf) await startAction("liberate", { asin: libraryButton.dataset.pdf, pdf: true });
+      if (libraryButton?.dataset.status) await startAction("set-status", { asin: libraryButton.dataset.status });
+    } catch (error) {
+      toast(error.message);
+    }
+  });
+
+  $("#refreshIpButton").addEventListener("click", async () => {
+    await api("/api/public-ip?refresh=1");
+    await loadStatus();
+    toast("Public IP aktualisiert");
+  });
+  $("#loadLibraryButton").addEventListener("click", () => loadLibrary().catch((error) => toast(error.message)));
+  $("#loadMoreLibraryButton").addEventListener("click", () => loadLibrary({ append: true }).catch((error) => toast(error.message)));
+  $("#librarySearch").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") loadLibrary().catch((error) => toast(error.message));
+  });
+  $("#libraryStatus").addEventListener("change", () => loadLibrary().catch((error) => toast(error.message)));
+  $("#librarySort").addEventListener("change", () => loadLibrary().catch((error) => toast(error.message)));
+
+  const libraryObserver = new IntersectionObserver((entries) => {
+    const active = $("#library").classList.contains("is-active");
+    const hasMore = state.libraryItems.length < state.libraryTotal;
+    if (active && hasMore && entries.some((entry) => entry.isIntersecting)) {
+      loadLibrary({ append: true }).catch((error) => toast(error.message));
+    }
+  }, { rootMargin: "360px" });
+  libraryObserver.observe($("#librarySentinel"));
+
+  $("#loadAccountsButton").addEventListener("click", () => loadAccounts().catch((error) => toast(error.message)));
+  $("#loginForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const job = await api("/api/accounts/login-external", {
+      method: "POST",
+      body: JSON.stringify(Object.fromEntries(form.entries()))
+    });
+    toast("Login Job gestartet");
+    await focusJob(job.id);
+  });
+  $("#importForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const job = await api("/api/accounts/import", {
+      method: "POST",
+      body: JSON.stringify({ json: form.get("json") })
+    });
+    toast("Import Job gestartet");
+    await focusJob(job.id);
+  });
+  $("#loadSettingsButton").addEventListener("click", () => loadSettings().catch((error) => toast(error.message)));
+  $("#saveSettingsButton").addEventListener("click", () => saveSettings("settings").catch((error) => toast(error.message)));
+  $("#saveAccountsSettingsButton").addEventListener("click", () => saveSettings("accounts").catch((error) => toast(error.message)));
+  $("#loadJobButton").addEventListener("click", () => loadSelectedJobLogs().catch((error) => toast(error.message)));
+  $("#logoutButton").addEventListener("click", async () => {
+    await api("/api/logout", { method: "POST" });
+    state.session = await refreshSession();
+    toast("Abgemeldet");
+    renderAuthGate();
+  });
+}
+
+async function loadAppData() {
+  if (!state.session?.authenticated) return;
+  await Promise.all([loadStatus(), loadJobs(), loadLibrary(), loadAccounts(), loadSettings()]);
+}
+
+async function boot() {
+  await injectIconSprite();
+  await loadManifest();
+  renderThemeControls();
+  wireEvents();
+  await refreshSession();
+  renderAuthGate();
+  await loadAppData();
+  setInterval(async () => {
+    if (!state.session?.authenticated) return;
+    await Promise.all([loadStatus(), loadJobs()]);
+    if (state.selectedJob?.id) await loadSelectedJobLogs();
+  }, 5000);
+}
+
+function formatStatus(status) {
+  if (status === 1) return ["Geladen", "ok"];
+  if (status === 2) return ["Fehler", "error"];
+  return ["Nicht geladen", "warn"];
+}
+
+function formatDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
 }
 
 function escapeHtml(value) {
@@ -256,82 +665,12 @@ function escapeAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
 
-function wireEvents() {
-  $$(".tab").forEach((button) => {
-    button.addEventListener("click", () => {
-      showView(button.dataset.view);
-    });
-  });
-
-  $$("[data-action]").forEach((button) => {
-    button.addEventListener("click", () => startAction(button.dataset.action).catch((error) => toast(error.message)));
-  });
-
-  $("#refreshIpButton").addEventListener("click", async () => {
-    await api("/api/public-ip?refresh=1");
-    await loadStatus();
-    toast("Public IP aktualisiert");
-  });
-
-  $("#loadLibraryButton").addEventListener("click", () => loadLibrary().catch((error) => toast(error.message)));
-  $("#loadMoreLibraryButton").addEventListener("click", () => loadLibrary({ append: true }).catch((error) => toast(error.message)));
-  $("#librarySearch").addEventListener("keydown", (event) => {
-    if (event.key === "Enter") loadLibrary().catch((error) => toast(error.message));
-  });
-  $("#libraryStatus").addEventListener("change", () => loadLibrary().catch((error) => toast(error.message)));
-  $("#librarySort").addEventListener("change", () => loadLibrary().catch((error) => toast(error.message)));
-
-  const libraryObserver = new IntersectionObserver((entries) => {
-    const active = $("#library").classList.contains("active");
-    const hasMore = state.libraryItems.length < state.libraryTotal;
-    if (active && hasMore && entries.some((entry) => entry.isIntersecting)) {
-      loadLibrary({ append: true }).catch((error) => toast(error.message));
-    }
-  }, { rootMargin: "360px" });
-  libraryObserver.observe($("#librarySentinel"));
-
-  $("#libraryRows").addEventListener("click", async (event) => {
-    const button = event.target.closest("button");
-    if (!button) return;
-    if (button.dataset.liberate) await startAction("liberate", { asin: button.dataset.liberate });
-    if (button.dataset.force) await startAction("liberate", { asin: button.dataset.force, force: true });
-    if (button.dataset.pdf) await startAction("liberate", { asin: button.dataset.pdf, pdf: true });
-    if (button.dataset.status) await startAction("set-status", { asin: button.dataset.status });
-  });
-
-  $("#loadAccountsButton").addEventListener("click", () => loadAccounts().catch((error) => toast(error.message)));
-  $("#loginForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const body = Object.fromEntries(form.entries());
-    const job = await api("/api/accounts/login-external", { method: "POST", body: JSON.stringify(body) });
-    toast("Login Job gestartet");
-    await focusJob(job.id);
-  });
-  $("#importForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const job = await api("/api/accounts/import", {
-      method: "POST",
-      body: JSON.stringify({ json: form.get("json") })
-    });
-    toast("Import Job gestartet");
-    await focusJob(job.id);
-  });
-
-  $("#loadSettingsButton").addEventListener("click", () => loadSettings().catch((error) => toast(error.message)));
-  $("#saveSettingsButton").addEventListener("click", () => saveSettings("settings").catch((error) => toast(error.message)));
-  $("#saveAccountsSettingsButton").addEventListener("click", () => saveSettings("accounts").catch((error) => toast(error.message)));
-  $("#loadJobButton").addEventListener("click", () => loadSelectedJobLogs().catch((error) => toast(error.message)));
+function cssEscape(value) {
+  if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(value);
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
 }
 
-async function boot() {
-  wireEvents();
-  await Promise.all([loadStatus(), loadJobs(), loadLibrary(), loadAccounts(), loadSettings()]);
-  setInterval(async () => {
-    await Promise.all([loadStatus(), loadJobs()]);
-    if (state.selectedJob?.id) await loadSelectedJobLogs();
-  }, 5000);
-}
-
-boot().catch((error) => toast(error.message));
+boot().catch((error) => {
+  $("#authRoot").hidden = false;
+  $("#authRoot").innerHTML = setupErrorTemplate(error.message);
+});

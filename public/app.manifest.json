@@ -1,0 +1,48 @@
+{
+  "app_id": "libiku",
+  "app_name": "Libiku",
+  "app_subtitle": "Libation Web GUI",
+  "app_symbol": "library",
+  "primary_purpose": "Libiku steuert Libation CLI im Browser und macht Audible-Bibliothek, Accounts, Jobs und Einstellungen in Docker erreichbar.",
+  "main_sections": ["dashboard", "library", "accounts", "settings"],
+  "app_logo": {
+    "src": "/assets/logos/libiku.png",
+    "favicon": "/assets/logos/libiku.png",
+    "alt": "",
+    "use_as_header_symbol": true,
+    "use_as_favicon": true,
+    "use_as_about_symbol": true,
+    "use_as_profile_sheet_symbol": true,
+    "use_as_empty_state_symbol": true
+  },
+  "first_run_setup": {
+    "enabled": true,
+    "route": "/setup",
+    "require_setup_secret": true,
+    "setup_secret_file_env": "ISHIKU_SETUP_SECRET_FILE",
+    "setup_secret_env": "ISHIKU_SETUP_SECRET",
+    "setup_secret_file_default": "/run/secrets/ishiku_setup_secret",
+    "public_registration_after_first_admin": false,
+    "admin_password_must_differ_from_setup_secret": true,
+    "minimum_admin_password_length": 12
+  },
+  "readme_profile": {
+    "repository_name": "libiku",
+    "github_owner": "MaroIshiku",
+    "public_repository": true,
+    "short_description": "Docker-first Libation Web GUI im Pixel Soft Utility Designsystem.",
+    "docker_image": "ghcr.io/maroishiku/libiku:latest",
+    "codex_notice_enabled": true
+  },
+  "default_theme": "mint",
+  "default_mode": "system",
+  "has_account": true,
+  "user_identity_fields": ["initials", "display_name", "username"],
+  "contextual_status": ["running_jobs", "public_ip", "library_database", "accounts"],
+  "primary_actions": ["scan", "liberate", "set-status", "convert"],
+  "technical_info": {
+    "allowed_locations": ["About", "Admin Info", "Diagnostics", "Logs"],
+    "disallowed_locations": ["AppHeader", "main footer"]
+  },
+  "navigation_complexity": "few_sections"
+}
