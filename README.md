@@ -1,62 +1,62 @@
 # Libiku
 
-Libation Web GUI fuer Docker, ZimaOS und optionale Gluetun-Deployments.
+Libation Web GUI for Docker, ZimaOS, and optional Gluetun deployments.
 
-## Kurzbeschreibung
+## Summary
 
-Libiku ist eine Weboberflaeche fuer [Libation](https://github.com/rmcrackan/Libation). Die App baut Libation CLI im Container, liest die Libation-SQLite-Datenbank fuer die Library-Ansicht read-only und fuehrt Scan-, Download-, Status-, Login- und Import-Aktionen ueber die offizielle CLI aus.
+Libiku is a web interface for [Libation](https://github.com/rmcrackan/Libation). The app builds Libation CLI inside the container, reads the Libation SQLite database in read-only mode for the Library view, and runs scan, download, status, login, and import actions through the official CLI.
 
-## Teil der ishiku-Familie
+## Part of the ishiku Family
 
-Libiku folgt dem gemeinsamen Pixel Soft Utility Designsystem der ishiku Apps: ruhige Flaechen, runde Komponenten, mobile AppShell, Desktop-Dashboard und konsistente Themes. Die App nutzt dieselben sechs Themes wie die anderen ishiku Utilities: Lavender, Mint, Sky, Amber, Rose und Graphite, jeweils mit Light, Dark und System Mode.
+Libiku follows the shared Pixel Soft Utility design system used by ishiku apps: calm surfaces, rounded components, a mobile app shell, a desktop dashboard, and consistent themes. The app uses the same six themes as the other ishiku utilities: Lavender, Mint, Sky, Amber, Rose, and Graphite, each with Light, Dark, and System mode.
 
-Der erste Start nutzt das gemeinsame Admin-Setup mit Docker-Secret. Danach ist die oeffentliche Registrierung geschlossen und die Web GUI verlangt eine Admin-Session.
+The first launch uses the shared admin setup with a Docker secret. After that, public registration is closed and the Web GUI requires an admin session.
 
-## Funktionen
+## Features
 
-- Dashboard mit Libation-Version, Public-IP-Kontext, aktiven Jobs und Job-Verlauf.
-- Library-Ansicht mit Suche, Statusfilter, Sortierung und kartengestuetzter Mobile-Ansicht.
-- Aktionen fuer Refresh, Liberate All, Einzel-Liberate, Force, PDF und Status Check.
-- Account-Liste ueber `LibationCli list-accounts`.
-- Externer Audible-Login und Import von `audible-cli` JSON als Hintergrundjobs.
-- JSON-Editoren fuer `Settings.json` und `AccountsSettings.json`.
-- Logs, Diagnostics und technische Informationen im Settings-Bereich.
-- First-Run Admin-Setup mit Setup-Secret, gehashtem Passwort und Session-Cookie.
+- Dashboard with Libation version, public IP context, active jobs, and job history.
+- Library view with search, status filter, sorting, and card-based mobile layout.
+- Actions for Refresh, Liberate All, single-title Liberate, Force, PDF, and Status Check.
+- Account list via `LibationCli list-accounts`.
+- External Audible login and `audible-cli` JSON import as background jobs.
+- JSON editors for `Settings.json` and `AccountsSettings.json`.
+- Logs, diagnostics, and technical information in the Settings section.
+- First-run admin setup with setup secret, hashed password, and session cookie.
 
 ## Tech Stack
 
-- Node.js ohne Frontend-Framework.
-- Libation CLI aus dem upstream Libation Repository.
-- SQLite-Zugriff ueber `sqlite3` im Container, read-only fuer Library-Daten.
-- Docker Multi-Stage Build mit .NET SDK fuer Libation und Node Runtime fuer Libiku.
-- Pixel Soft Utility Designsystem mit lokaler CSS/JS-Basis, lokaler Icon-Sprite und lokalem Logo.
+- Node.js without a frontend framework.
+- Libation CLI from the upstream Libation repository.
+- SQLite access through `sqlite3` in the container, read-only for library data.
+- Docker multi-stage build with .NET SDK for Libation and Node runtime for Libiku.
+- Pixel Soft Utility design system with local CSS/JS, local icon sprite, and local logo.
 
 ## Installation
 
 ### Docker Compose
 
-Lege zuerst ein Setup-Secret an:
+Create a setup secret first:
 
 ```bash
 mkdir -p secrets
 printf '%s\n' 'replace-with-a-long-random-secret' > secrets/setup_secret.txt
 ```
 
-Direkter Betrieb ohne VPN:
+Run directly without VPN:
 
 ```bash
 docker compose -f compose.yml up -d
 ```
 
-Fuer eigene Deployments kann `docker-compose.example.yml` als neutrale Vorlage genutzt werden.
+For custom deployments, `docker-compose.example.yml` can be used as a neutral template.
 
-Empfohlener Betrieb mit Gluetun:
+Recommended Gluetun deployment:
 
 ```bash
 docker compose -f compose.gluetun.yml up -d
 ```
 
-Vor dem Start des Gluetun-Stacks muessen die Platzhalter in `compose.gluetun.yml` ersetzt werden:
+Before starting the Gluetun stack, replace the placeholders in `compose.gluetun.yml`:
 
 ```yaml
 MULLVAD_ACCOUNT_ID: INSERT_HERE
@@ -64,102 +64,102 @@ WIREGUARD_PRIVATE_KEY: INSERT_HERE
 WIREGUARD_ADDRESSES: INSERT_HERE
 ```
 
-Die Web GUI ist danach unter folgendem Port erreichbar:
+The Web GUI is available on this port:
 
 ```text
 http://<host>:3100
 ```
 
-### Erstes Starten
+### First Launch
 
-Beim ersten Aufruf zeigt Libiku ein blockierendes Admin-Setup. Die normale App ist erst sichtbar, wenn ein erster Adminaccount erstellt wurde.
+On first launch, Libiku shows a blocking admin setup. The normal app is only visible after the first admin account has been created.
 
-### Adminaccount erstellen
+### Create Admin Account
 
-Gib im Setup-Fenster das Setup-Secret aus `secrets/setup_secret.txt`, einen Anzeigenamen, einen Admin-Benutzernamen und ein Admin-Passwort ein. Das Admin-Passwort muss mindestens 12 Zeichen lang sein und darf nicht dem Setup-Secret entsprechen.
+Enter the setup secret from `secrets/setup_secret.txt`, a display name, an admin username, and an admin password in the setup window. The admin password must be at least 12 characters long and must not match the setup secret.
 
-Nach erfolgreicher Erstellung wird die Registrierung geschlossen. Weitere Admins koennen nicht ueber das oeffentliche Setup erstellt werden.
+After successful creation, registration closes. Additional admins cannot be created through the public setup.
 
-## Konfiguration
+## Configuration
 
-### Umgebungsvariablen
+### Environment Variables
 
-| Variable | Standard | Zweck |
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `PORT` | `3000` | Webserver-Port im Container |
-| `TZ` | `Europe/Berlin` | Zeitzone fuer Logs und Anzeige |
-| `LIBIKU_AUTH_FILE` | `/config/LibikuAuth.json` | Persistente Admin- und Setup-Metadaten |
-| `LIBIKU_SESSION_TTL_SECONDS` | `604800` | Laufzeit der Admin-Session |
-| `LIBATION_CLI` | `/libation/LibationCli` | Pfad zur Libation CLI |
-| `LIBATION_FILES_DIR` | `/config` | Libation Settings und Accounts |
-| `LIBATION_DB_DIR` | `/db` | Suchpfad fuer Libation-Datenbanken |
-| `LIBATION_BOOKS_DIR` | `/data` | Zielpfad fuer Downloads |
-| `PUBLIC_IP_URL` | `https://api.ipify.org?format=json` | Public-IP-Pruefung |
-| `PUBLIC_IP_INTERVAL_SECONDS` | `300` | Intervall der Public-IP-Pruefung |
+| `PORT` | `3000` | Web server port inside the container |
+| `TZ` | `Europe/Berlin` | Time zone for logs and display |
+| `LIBIKU_AUTH_FILE` | `/config/LibikuAuth.json` | Persistent admin and setup metadata |
+| `LIBIKU_SESSION_TTL_SECONDS` | `604800` | Admin session lifetime |
+| `LIBATION_CLI` | `/libation/LibationCli` | Path to Libation CLI |
+| `LIBATION_FILES_DIR` | `/config` | Libation settings and accounts |
+| `LIBATION_DB_DIR` | `/db` | Search path for Libation databases |
+| `LIBATION_BOOKS_DIR` | `/data` | Download output path |
+| `PUBLIC_IP_URL` | `https://api.ipify.org?format=json` | Public IP check |
+| `PUBLIC_IP_INTERVAL_SECONDS` | `300` | Public IP check interval |
 
 ### Docker Secrets
 
-Libiku liest bevorzugt:
+Libiku prefers:
 
 ```text
 ISHIKU_SETUP_SECRET_FILE=/run/secrets/ishiku_setup_secret
 ```
 
-`ISHIKU_SETUP_SECRET` ist nur als Fallback fuer einfache lokale Deployments gedacht. Das Secret wird nicht in der Datenbank gespeichert und nicht an den Browser ausgegeben.
+`ISHIKU_SETUP_SECRET` is intended only as a fallback for simple local deployments. The secret is not stored in the database and is not sent to the browser.
 
-### Persistente Daten
+### Persistent Data
 
-Die Compose-Dateien nutzen standardmaessig:
+The Compose files use these paths by default:
 
-| Host-Pfad | Container-Pfad | Zweck |
+| Host path | Container path | Purpose |
 | --- | --- | --- |
-| `/media/ZimaOS-HD/AppData/libiku/config` | `/config` | Libation Settings, Accounts und Libiku Auth-Datei |
-| `/media/ZimaOS-HD/AppData/libiku/db` | `/db` | Libation-Datenbank |
-| `/media/ZimaOS-HD/AppData/libiku/data` | `/data` | Download-Ausgabe |
-| `/media/ZimaOS-HD/AppData/libiku/gluetun` | `/gluetun` | Gluetun Statusdaten im VPN-Stack |
+| `/media/ZimaOS-HD/AppData/libiku/config` | `/config` | Libation settings, accounts, and Libiku auth file |
+| `/media/ZimaOS-HD/AppData/libiku/db` | `/db` | Libation database |
+| `/media/ZimaOS-HD/AppData/libiku/data` | `/data` | Download output |
+| `/media/ZimaOS-HD/AppData/libiku/gluetun` | `/gluetun` | Gluetun state data in the VPN stack |
 
-## Sicherheit
+## Security
 
-- Das Setup-Secret ist nur fuer die erste Admin-Registrierung vorgesehen.
-- Das Admin-Passwort darf nicht mit dem Setup-Secret uebereinstimmen.
-- Passwoerter werden mit Node `scrypt` gehasht gespeichert, nicht im Klartext.
-- Oeffentliche Registrierung ist nach dem ersten Adminaccount geschlossen.
-- Sessions nutzen HttpOnly-Cookies mit `SameSite=Lax`.
-- Falsche Setup-Versuche werden begrenzt.
-- Healthchecks unter `/healthz` geben keine sensiblen Daten aus.
+- The setup secret is only used for the first admin registration.
+- The admin password must not match the setup secret.
+- Passwords are stored as Node `scrypt` hashes, never as plaintext.
+- Public registration is closed after the first admin account.
+- Sessions use HttpOnly cookies with `SameSite=Lax`.
+- Failed setup attempts are rate-limited.
+- Health checks at `/healthz` do not expose sensitive data.
 
-## Updates und Backup
+## Updates and Backup
 
-Ziehe neue Images und erstelle den Stack neu:
+Pull new images and recreate the stack:
 
 ```bash
 docker compose -f compose.yml pull
 docker compose -f compose.yml up -d
 ```
 
-Sichere vor Updates die persistenten Verzeichnisse `/config`, `/db` und `/data`. Im Gluetun-Modus sollte auch `/gluetun` gesichert werden, wenn dessen Zustand erhalten bleiben soll.
+Back up the persistent `/config`, `/db`, and `/data` directories before updates. In Gluetun mode, also back up `/gluetun` if its state should be preserved.
 
-## Entwicklung
+## Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-Fuer lokale Entwicklung ohne gebautes Libation CLI kann `LIBATION_CLI` auf einen vorhandenen `LibationCli`-Pfad gesetzt werden.
+For local development without a built Libation CLI, set `LIBATION_CLI` to an existing `LibationCli` path.
 
-Syntaxcheck:
+Syntax check:
 
 ```bash
 npm run check
 ```
 
-## Erstellt mit ChatGPT Codex
+## Created with ChatGPT Codex
 
-Dieses Projekt wurde mit Unterstuetzung von ChatGPT Codex entworfen und ueberarbeitet. Maintainer, Rechteinhaber und Verantwortung fuer Betrieb und Veroeffentlichung bleiben beim Repository-Inhaber.
+This project was designed and revised with support from ChatGPT Codex. Maintenance, ownership, operating responsibility, and publishing responsibility remain with the repository owner.
 
-## Status und Lizenz
+## Status and License
 
-Status: fruehe Docker-first Web GUI fuer Libation CLI.
+Status: early Docker-first Web GUI for Libation CLI.
 
-Eine Lizenzdatei ist aktuell nicht enthalten. Vor Weiterverwendung ausserhalb des eigenen Deployments sollte eine passende Lizenz ergaenzt werden.
+A license file is not included yet. Add an appropriate license before reuse outside your own deployment.

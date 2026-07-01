@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de" data-theme="mint" data-mode="system" data-resolved-mode="light">
+<html lang="en" data-theme="mint" data-mode="system" data-resolved-mode="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -24,17 +24,36 @@
             <p class="psu-app-subtitle" data-psu-app-subtitle>Libation Web GUI</p>
           </div>
           <div class="psu-spacer"></div>
-          <button id="profileButton" class="psu-avatar-button" type="button" data-psu-open="#settingsSheet" aria-label="Profil und Einstellungen oeffnen">L</button>
+          <button id="profileButton" class="psu-avatar-button" type="button" data-psu-open="#settingsSheet" aria-label="Open profile and settings">L</button>
         </div>
       </header>
 
       <main class="psu-main">
+        <nav class="desktop-section-nav" aria-label="Primary sections">
+          <button class="psu-button psu-button--tonal" type="button" data-nav="dashboard" aria-current="page">
+            <svg aria-hidden="true"><use href="#psu-icon-home"></use></svg>
+            Dashboard
+          </button>
+          <button class="psu-button psu-button--text" type="button" data-nav="library">
+            <svg aria-hidden="true"><use href="#psu-icon-library"></use></svg>
+            Library
+          </button>
+          <button class="psu-button psu-button--text" type="button" data-nav="accounts">
+            <svg aria-hidden="true"><use href="#psu-icon-account"></use></svg>
+            Accounts
+          </button>
+          <button class="psu-button psu-button--text" type="button" data-nav="settings">
+            <svg aria-hidden="true"><use href="#psu-icon-settings"></use></svg>
+            Settings
+          </button>
+        </nav>
+
         <section id="dashboard" class="app-view is-active" data-view="dashboard" aria-labelledby="dashboardTitle">
           <article class="psu-hero-card libiku-hero">
             <div>
               <p class="eyebrow">Libation CLI</p>
-              <h2 id="dashboardTitle">Bibliothek steuern</h2>
-              <p id="heroStatus">Libiku verbindet sich mit deiner lokalen Libation-Umgebung.</p>
+              <h2 id="dashboardTitle">Control your library</h2>
+              <p id="heroStatus">Libiku is connecting to your local Libation environment.</p>
             </div>
             <div class="hero-actions">
               <button class="psu-button psu-button--filled" type="button" data-action="scan">
@@ -52,31 +71,31 @@
 
           <div class="psu-desktop-grid">
             <article class="psu-card psu-col-4">
-              <p class="stat-label">Aktive Jobs</p>
+              <p class="stat-label">Active jobs</p>
               <strong id="jobCount" class="stat-value">0</strong>
-              <p class="psu-card-text">Exklusive Libation-Aufgaben laufen nacheinander.</p>
+              <p class="psu-card-text">Exclusive Libation tasks run one at a time.</p>
             </article>
             <article class="psu-card psu-col-4">
               <p class="stat-label">Public IP</p>
               <strong id="publicIp" class="stat-value">...</strong>
-              <button id="refreshIpButton" class="psu-button psu-button--text compact-action" type="button">Aktualisieren</button>
+              <button id="refreshIpButton" class="psu-button psu-button--text compact-action" type="button">Refresh</button>
             </article>
             <article class="psu-card psu-col-4">
               <p class="stat-label">Library</p>
               <strong id="libraryCount" class="stat-value">0</strong>
-              <p class="psu-card-text">Titel im aktuellen Filter.</p>
+              <p class="psu-card-text">Titles in the current filter.</p>
             </article>
             <article class="psu-card psu-col-6">
               <div class="section-heading">
-                <h2>Aktive Jobs</h2>
+                <h2>Active jobs</h2>
               </div>
-              <div id="activeJobs" class="app-list empty-state">Keine aktiven Jobs</div>
+              <div id="activeJobs" class="app-list empty-state">No active jobs</div>
             </article>
             <article class="psu-card psu-col-6">
               <div class="section-heading">
-                <h2>Letzte Jobs</h2>
+                <h2>Recent jobs</h2>
               </div>
-              <div id="recentJobs" class="app-list empty-state">Noch keine Jobs</div>
+              <div id="recentJobs" class="app-list empty-state">No jobs yet</div>
             </article>
           </div>
         </section>
@@ -86,44 +105,44 @@
             <div class="section-heading wrap">
               <div>
                 <h2 id="libraryTitle">Library</h2>
-                <p id="libraryMeta" class="psu-card-text">Library wird geladen...</p>
+                <p id="libraryMeta" class="psu-card-text">Loading library...</p>
               </div>
               <button id="loadLibraryButton" class="psu-button psu-button--tonal" type="button">Reload</button>
             </div>
             <div class="filter-grid">
               <label class="psu-field">
-                <span class="psu-label">Suche</span>
-                <input id="librarySearch" class="psu-search-field" type="search" placeholder="Titel, ASIN, Autor oder Serie" />
+                <span class="psu-label">Search</span>
+                <input id="librarySearch" class="psu-search-field" type="search" placeholder="Title, ASIN, author, or series" />
               </label>
               <label class="psu-field">
                 <span class="psu-label">Status</span>
                 <select id="libraryStatus" class="psu-input">
-                  <option value="all">Alle Status</option>
-                  <option value="missing">Nicht geladen</option>
-                  <option value="downloaded">Geladen</option>
-                  <option value="error">Fehler</option>
+                  <option value="all">All statuses</option>
+                  <option value="missing">Not downloaded</option>
+                  <option value="downloaded">Downloaded</option>
+                  <option value="error">Error</option>
                 </select>
               </label>
               <label class="psu-field">
-                <span class="psu-label">Sortierung</span>
+                <span class="psu-label">Sort</span>
                 <select id="librarySort" class="psu-input">
-                  <option value="title-asc">Name A-Z</option>
-                  <option value="title-desc">Name Z-A</option>
+                  <option value="title-asc">Title A-Z</option>
+                  <option value="title-desc">Title Z-A</option>
                   <option value="asin-asc">ASIN A-Z</option>
                   <option value="asin-desc">ASIN Z-A</option>
                   <option value="status-asc">Status 0-9</option>
                   <option value="status-desc">Status 9-0</option>
-                  <option value="date-added-desc">Neu hinzugefuegt</option>
-                  <option value="date-added-asc">Alt hinzugefuegt</option>
-                  <option value="author-asc">Autor A-Z</option>
-                  <option value="series-asc">Serie A-Z</option>
+                  <option value="date-added-desc">Newest added</option>
+                  <option value="date-added-asc">Oldest added</option>
+                  <option value="author-asc">Author A-Z</option>
+                  <option value="series-asc">Series A-Z</option>
                 </select>
               </label>
             </div>
           </article>
           <div id="libraryRows" class="library-grid"></div>
           <div class="load-row">
-            <button id="loadMoreLibraryButton" class="psu-button psu-button--outlined" type="button">Mehr laden</button>
+            <button id="loadMoreLibraryButton" class="psu-button psu-button--outlined" type="button">Load more</button>
           </div>
           <div id="librarySentinel" aria-hidden="true"></div>
         </section>
@@ -134,14 +153,14 @@
               <div class="section-heading">
                 <div>
                   <h2 id="accountsTitle">Accounts</h2>
-                  <p class="psu-card-text">Von Libation CLI gemeldete Konten.</p>
+                  <p class="psu-card-text">Accounts reported by Libation CLI.</p>
                 </div>
                 <button id="loadAccountsButton" class="psu-button psu-button--tonal" type="button">Reload</button>
               </div>
-              <div id="accountsList" class="app-list empty-state">Keine Accounts geladen</div>
+              <div id="accountsList" class="app-list empty-state">No accounts loaded</div>
             </article>
             <article class="psu-card psu-col-6">
-              <h2>Login External</h2>
+              <h2>External login</h2>
               <form id="loginForm" class="form-stack">
                 <label class="psu-field">
                   <span class="psu-label">Account</span>
@@ -153,19 +172,19 @@
                 </label>
                 <label class="psu-field">
                   <span class="psu-label">Response URL</span>
-                  <textarea class="psu-input" name="responseUrl" rows="4" placeholder="Optional: nach Audible-Login hier einfuegen"></textarea>
+                  <textarea class="psu-input" name="responseUrl" rows="4" placeholder="Optional: paste the Audible login response URL here"></textarea>
                 </label>
-                <button class="psu-button psu-button--filled" type="submit">Login Job starten</button>
+                <button class="psu-button psu-button--filled" type="submit">Start login job</button>
               </form>
             </article>
             <article class="psu-card psu-col-12">
-              <h2>Account Import</h2>
+              <h2>Account import</h2>
               <form id="importForm" class="form-stack">
                 <label class="psu-field">
                   <span class="psu-label">audible-cli JSON</span>
                   <textarea class="psu-input code-editor compact" name="json" rows="7" placeholder="{ ... }"></textarea>
                 </label>
-                <button class="psu-button psu-button--tonal" type="submit">Import Job starten</button>
+                <button class="psu-button psu-button--tonal" type="submit">Start import job</button>
               </form>
             </article>
           </div>
@@ -177,18 +196,18 @@
               <div class="section-heading wrap">
                 <div>
                   <h2 id="settingsTitle">Settings</h2>
-                  <p class="psu-card-text">Erscheinung, Libation-Konfiguration, Diagnostik und Logs.</p>
+                  <p class="psu-card-text">Appearance, Libation configuration, diagnostics, and logs.</p>
                 </div>
                 <div class="button-row">
                   <button id="loadSettingsButton" class="psu-button psu-button--tonal" type="button">Reload</button>
-                  <button id="saveSettingsButton" class="psu-button psu-button--filled" type="button">Settings speichern</button>
-                  <button id="saveAccountsSettingsButton" class="psu-button psu-button--outlined" type="button">Accounts speichern</button>
+                  <button id="saveSettingsButton" class="psu-button psu-button--filled" type="button">Save settings</button>
+                  <button id="saveAccountsSettingsButton" class="psu-button psu-button--outlined" type="button">Save accounts</button>
                 </div>
               </div>
             </article>
             <article class="psu-card psu-col-4">
-              <h2>Erscheinung</h2>
-              <p class="psu-card-text">Gemeinsame Pixel Soft Utility Themes.</p>
+              <h2>Appearance</h2>
+              <p class="psu-card-text">Shared Pixel Soft Utility themes.</p>
               <div class="theme-grid" data-theme-picker></div>
               <div class="psu-segmented-control mode-control" data-mode-picker></div>
             </article>
@@ -208,20 +227,20 @@
               <div class="section-heading wrap">
                 <div>
                   <h2>Logs</h2>
-                  <p class="psu-card-text">Job-Ausgabe aus der laufenden Libation-CLI-Session.</p>
+                  <p class="psu-card-text">Job output from the current Libation CLI session.</p>
                 </div>
                 <div class="button-row">
                   <select id="jobSelector" class="psu-input job-select"></select>
-                  <button id="loadJobButton" class="psu-button psu-button--tonal" type="button">Logs laden</button>
+                  <button id="loadJobButton" class="psu-button psu-button--tonal" type="button">Load logs</button>
                 </div>
               </div>
-              <pre id="jobLogs" class="logs">Kein Job ausgewaehlt</pre>
+              <pre id="jobLogs" class="logs">No job selected</pre>
             </article>
           </div>
         </section>
       </main>
 
-      <nav class="psu-bottom-nav app-bottom-nav" aria-label="Hauptbereiche" style="--psu-nav-count: 4">
+      <nav class="psu-bottom-nav app-bottom-nav" aria-label="Primary sections" style="--psu-nav-count: 4">
         <button type="button" data-nav="dashboard" aria-current="page">
           <svg aria-hidden="true"><use href="#psu-icon-home"></use></svg>
           Home
@@ -247,13 +266,13 @@
         <div class="psu-sheet-header">
           <span></span>
           <h2 id="settingsSheetTitle" class="psu-sheet-title">Libiku</h2>
-          <button class="psu-icon-button" type="button" data-psu-close aria-label="Menue schliessen">
+          <button class="psu-icon-button" type="button" data-psu-close aria-label="Close menu">
             <svg aria-hidden="true"><use href="#psu-icon-close"></use></svg>
           </button>
         </div>
         <div class="psu-account-card">
           <div class="psu-logo-frame">
-            <img data-psu-app-logo alt="Libiku Logo" />
+            <img data-psu-app-logo alt="Libiku logo" />
             <svg data-psu-fallback-symbol aria-hidden="true"><use href="#psu-icon-library"></use></svg>
           </div>
           <div>
@@ -271,17 +290,17 @@
             <svg class="psu-list-row__icon" aria-hidden="true"><use href="#psu-icon-dns"></use></svg>
             <span>
               <span class="psu-list-row__label">Diagnostics</span>
-              <span class="psu-list-row__support">Versionen, Pfade, Health und Logs</span>
+              <span class="psu-list-row__support">Versions, paths, health, and logs</span>
             </span>
-            <span aria-hidden="true">›</span>
+            <span aria-hidden="true">&gt;</span>
           </button>
           <button id="logoutButton" class="psu-list-row" type="button">
             <svg class="psu-list-row__icon" aria-hidden="true"><use href="#psu-icon-logout"></use></svg>
             <span>
-              <span class="psu-list-row__label">Abmelden</span>
-              <span class="psu-list-row__support">Aktuelle Admin-Session beenden</span>
+              <span class="psu-list-row__label">Log out</span>
+              <span class="psu-list-row__support">End the current admin session</span>
             </span>
-            <span aria-hidden="true">›</span>
+            <span aria-hidden="true">&gt;</span>
           </button>
         </div>
       </aside>

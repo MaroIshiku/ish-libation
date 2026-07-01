@@ -123,7 +123,7 @@ function renderAuthGate() {
             passwordConfirm: data.get("admin_password_confirm")
           };
           state.session = await api("/api/setup", { method: "POST", body: JSON.stringify(payload) });
-          toast("Adminaccount erstellt");
+          toast("Admin account created");
           renderAuthGate();
           await loadAppData();
         } catch (error) {
@@ -149,7 +149,7 @@ function renderAuthGate() {
         method: "POST",
         body: JSON.stringify({ username: data.get("username"), password: data.get("password") })
       });
-      toast("Angemeldet");
+      toast("Logged in");
       renderAuthGate();
       await loadAppData();
     } catch (error) {
@@ -181,12 +181,12 @@ function setupErrorTemplate(message) {
       <section class="psu-setup-error-window">
         ${setupBrand()}
         <article class="psu-tonal-card">
-          <h2 class="psu-card-title">Setup wartet auf ein Secret</h2>
-          <p class="psu-card-text">Lege ein Docker Secret an oder setze den lokalen Fallback, bevor der erste Adminaccount erstellt wird.</p>
+          <h2 class="psu-card-title">Setup is waiting for a secret</h2>
+          <p class="psu-card-text">Create a Docker secret or set the local fallback before the first admin account is created.</p>
         </article>
         <article class="psu-technical-card setup-technical-card">
-          <span class="psu-label">Fehlende Konfiguration</span>
-          <div class="psu-technical-value">${escapeHtml(message || "ISHIKU_SETUP_SECRET_FILE oder ISHIKU_SETUP_SECRET")}</div>
+          <span class="psu-label">Missing configuration</span>
+          <div class="psu-technical-value">${escapeHtml(message || "ISHIKU_SETUP_SECRET_FILE or ISHIKU_SETUP_SECRET")}</div>
         </article>
       </section>
     </main>
@@ -199,25 +199,25 @@ function registerTemplate() {
       <section class="psu-register-window" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
         ${setupBrand()}
         <form id="setupForm" class="psu-form-stack" data-app-id="libiku" data-app-name="Libiku">
-          <h2 id="setupTitle" class="center-title">Admin einrichten</h2>
+          <h2 id="setupTitle" class="center-title">Create admin account</h2>
           ${fieldTemplate("setup_secret", "Setup-Secret", "password", "one-time-code")}
-          ${fieldTemplate("admin_display_name", "Anzeigename", "text", "name")}
-          ${fieldTemplate("admin_username", "Admin-Benutzername", "text", "username")}
-          ${fieldTemplate("admin_email", "E-Mail optional", "email", "email", false)}
-          ${fieldTemplate("admin_password", "Admin-Passwort", "password", "new-password")}
-          ${fieldTemplate("admin_password_confirm", "Passwort wiederholen", "password", "new-password")}
+          ${fieldTemplate("admin_display_name", "Display name", "text", "name")}
+          ${fieldTemplate("admin_username", "Admin username", "text", "username")}
+          ${fieldTemplate("admin_email", "Email optional", "email", "email", false)}
+          ${fieldTemplate("admin_password", "Admin password", "password", "new-password")}
+          ${fieldTemplate("admin_password_confirm", "Repeat password", "password", "new-password")}
           <div class="psu-password-requirements">
-            <strong>Passwortregeln</strong>
+            <strong>Password rules</strong>
             <ul>
-              <li>Mindestens 12 Zeichen.</li>
-              <li>Nicht identisch mit Setup-Secret, Benutzername, App-ID oder App-Name.</li>
-              <li>Keine Platzhalter wie admin, password oder changeme.</li>
+              <li>At least 12 characters.</li>
+              <li>Must not match the setup secret, username, app ID, or app name.</li>
+              <li>Do not use placeholders like admin, password, or changeme.</li>
             </ul>
           </div>
           <div class="psu-setup-actions">
-            <button class="psu-button psu-button--filled" type="submit">Adminaccount erstellen</button>
+            <button class="psu-button psu-button--filled" type="submit">Create admin account</button>
           </div>
-          <p class="psu-setup-footnote">Nach dem Erstellen wird die Registrierung automatisch geschlossen.</p>
+          <p class="psu-setup-footnote">Registration closes automatically after this account is created.</p>
         </form>
       </section>
     </main>
@@ -231,11 +231,11 @@ function loginTemplate() {
         ${setupBrand()}
         <form id="authForm" class="psu-form-stack">
           <h2 id="loginTitle" class="center-title">Admin Login</h2>
-          ${fieldTemplate("username", "Admin-Benutzername", "text", "username", true, "auth_username")}
-          ${fieldTemplate("password", "Passwort", "password", "current-password", true, "auth_password")}
+          ${fieldTemplate("username", "Admin username", "text", "username", true, "auth_username")}
+          ${fieldTemplate("password", "Password", "password", "current-password", true, "auth_password")}
           <p id="authError" class="psu-field-error" hidden></p>
           <div class="psu-setup-actions">
-            <button class="psu-button psu-button--filled" type="submit">Anmelden</button>
+            <button class="psu-button psu-button--filled" type="submit">Log in</button>
           </div>
         </form>
       </section>
@@ -284,8 +284,8 @@ function renderStatus() {
   const status = state.status;
   if (!status) return;
   const activeJobs = status.runningJobs?.length || 0;
-  $("#heroStatus").textContent = `${status.libationVersion || "Libation CLI"} ist bereit. ${activeJobs} Job${activeJobs === 1 ? "" : "s"} aktiv.`;
-  $("#publicIp").textContent = status.publicIp?.ip || (status.publicIp?.error ? "Fehler" : "unbekannt");
+  $("#heroStatus").textContent = `${status.libationVersion || "Libation CLI"} is ready. ${activeJobs} active job${activeJobs === 1 ? "" : "s"}.`;
+  $("#publicIp").textContent = status.publicIp?.ip || (status.publicIp?.error ? "Error" : "unknown");
   $("#jobCount").textContent = String(activeJobs);
   renderDiagnostics();
 }
@@ -314,14 +314,14 @@ function renderDiagnostics() {
 function renderJobs() {
   const active = state.jobs.filter((job) => job.status === "running");
   const recent = state.jobs.slice(0, 8);
-  $("#activeJobs").innerHTML = active.length ? active.map(jobItem).join("") : "Keine aktiven Jobs";
+  $("#activeJobs").innerHTML = active.length ? active.map(jobItem).join("") : "No active jobs";
   $("#activeJobs").classList.toggle("empty-state", active.length === 0);
-  $("#recentJobs").innerHTML = recent.length ? recent.map(jobItem).join("") : "Noch keine Jobs";
+  $("#recentJobs").innerHTML = recent.length ? recent.map(jobItem).join("") : "No jobs yet";
   $("#recentJobs").classList.toggle("empty-state", recent.length === 0);
   const selectedId = $("#jobSelector").value || state.selectedJob?.id || "";
   $("#jobSelector").innerHTML = state.jobs.length
     ? state.jobs.map((job) => `<option value="${job.id}">${escapeHtml(job.label)} - ${job.status}</option>`).join("")
-    : `<option value="">Keine Jobs</option>`;
+    : `<option value="">No jobs</option>`;
   if (selectedId && state.jobs.some((job) => job.id === selectedId)) $("#jobSelector").value = selectedId;
 }
 
@@ -333,7 +333,7 @@ function jobItem(job) {
         <strong>${escapeHtml(job.label)}</strong>
         <span class="status-chip ${klass}">${escapeHtml(job.status)}</span>
       </div>
-      <small>${formatDate(job.startedAt)}${job.finishedAt ? ` bis ${formatDate(job.finishedAt)}` : ""}</small>
+      <small>${formatDate(job.startedAt)}${job.finishedAt ? ` to ${formatDate(job.finishedAt)}` : ""}</small>
     </article>
   `;
 }
@@ -353,7 +353,7 @@ async function startAction(action, extra = {}) {
     method: "POST",
     body: JSON.stringify({ action, ...extra })
   });
-  toast(`Job gestartet: ${job.label}`);
+  toast(`Job started: ${job.label}`);
   await Promise.all([loadStatus(), loadJobs()]);
   await focusJob(job.id, false);
 }
@@ -362,8 +362,8 @@ function resetLibrary() {
   state.libraryOffset = 0;
   state.libraryTotal = 0;
   state.libraryItems = [];
-  $("#libraryRows").innerHTML = `<article class="psu-card empty-state">Library wird geladen...</article>`;
-  $("#libraryMeta").textContent = "Library wird geladen...";
+  $("#libraryRows").innerHTML = `<article class="psu-card empty-state">Loading library...</article>`;
+  $("#libraryMeta").textContent = "Loading library...";
   $("#loadMoreLibraryButton").disabled = true;
 }
 
@@ -396,10 +396,10 @@ async function loadLibrary({ append = false } = {}) {
 function renderLibrary(result = {}) {
   const shown = state.libraryItems.length;
   $("#libraryCount").textContent = String(state.libraryTotal || 0);
-  $("#libraryMeta").textContent = result.warning || `${shown} von ${state.libraryTotal} Titeln`;
+  $("#libraryMeta").textContent = result.warning || `${shown} of ${state.libraryTotal} titles`;
   $("#libraryRows").innerHTML = state.libraryItems.length
     ? state.libraryItems.map(libraryCard).join("")
-    : emptyState("Keine Titel gefunden", "Refresh liest die aktuelle Libation-Datenbank ein.");
+    : emptyState("No titles found", "Refresh reads the current Libation database.");
 }
 
 function updateLibraryLoadButton() {
@@ -407,12 +407,12 @@ function updateLibraryLoadButton() {
   const hasMore = state.libraryItems.length < state.libraryTotal;
   button.disabled = state.libraryLoading || !hasMore;
   button.textContent = state.libraryLoading
-    ? "Lade..."
+    ? "Loading..."
     : hasMore
-      ? `Mehr laden (${state.libraryItems.length}/${state.libraryTotal})`
+      ? `Load more (${state.libraryItems.length}/${state.libraryTotal})`
       : state.libraryTotal
-        ? `Alle geladen (${state.libraryTotal})`
-        : "Mehr laden";
+        ? `All loaded (${state.libraryTotal})`
+        : "Load more";
 }
 
 function libraryCard(item) {
@@ -423,9 +423,9 @@ function libraryCard(item) {
     <article class="psu-card book-card">
       <div class="book-card-main">
         <div>
-          <h3>${escapeHtml(item.title || "Ohne Titel")}</h3>
+          <h3>${escapeHtml(item.title || "Untitled")}</h3>
           ${subtitle}
-          <p class="book-meta">${meta || "Autor / Serie unbekannt"}</p>
+          <p class="book-meta">${meta || "Author / series unknown"}</p>
         </div>
         <span class="status-chip ${klass}">${label}</span>
       </div>
@@ -470,7 +470,7 @@ async function loadAccounts() {
         <small>${escapeHtml(account.id || "")} - ${escapeHtml(account.locale || "")} - scan: ${account.scanLibrary ? "yes" : "no"}</small>
       </article>
     `).join("")
-    : "Keine Accounts konfiguriert";
+    : "No accounts configured";
   $("#accountsList").classList.toggle("empty-state", result.accounts.length === 0);
 }
 
@@ -487,7 +487,7 @@ async function saveSettings(kind) {
     method: "PUT",
     body: JSON.stringify(value)
   });
-  toast(`${kind} gespeichert`);
+  toast(`${kind} saved`);
 }
 
 async function loadSelectedJobLogs() {
@@ -497,7 +497,7 @@ async function loadSelectedJobLogs() {
   state.selectedJob = job;
   $("#jobLogs").textContent = job.logs.length
     ? job.logs.map((entry) => `[${entry.at}] ${entry.stream}: ${entry.line}`).join("\n")
-    : "Noch keine Logs";
+    : "No logs yet";
 }
 
 function showView(viewId) {
@@ -568,7 +568,7 @@ function wireEvents() {
   $("#refreshIpButton").addEventListener("click", async () => {
     await api("/api/public-ip?refresh=1");
     await loadStatus();
-    toast("Public IP aktualisiert");
+    toast("Public IP refreshed");
   });
   $("#loadLibraryButton").addEventListener("click", () => loadLibrary().catch((error) => toast(error.message)));
   $("#loadMoreLibraryButton").addEventListener("click", () => loadLibrary({ append: true }).catch((error) => toast(error.message)));
@@ -595,7 +595,7 @@ function wireEvents() {
       method: "POST",
       body: JSON.stringify(Object.fromEntries(form.entries()))
     });
-    toast("Login Job gestartet");
+    toast("Login job started");
     await focusJob(job.id);
   });
   $("#importForm").addEventListener("submit", async (event) => {
@@ -605,7 +605,7 @@ function wireEvents() {
       method: "POST",
       body: JSON.stringify({ json: form.get("json") })
     });
-    toast("Import Job gestartet");
+    toast("Import job started");
     await focusJob(job.id);
   });
   $("#loadSettingsButton").addEventListener("click", () => loadSettings().catch((error) => toast(error.message)));
@@ -615,7 +615,7 @@ function wireEvents() {
   $("#logoutButton").addEventListener("click", async () => {
     await api("/api/logout", { method: "POST" });
     state.session = await refreshSession();
-    toast("Abgemeldet");
+    toast("Logged out");
     renderAuthGate();
   });
 }
@@ -641,9 +641,9 @@ async function boot() {
 }
 
 function formatStatus(status) {
-  if (status === 1) return ["Geladen", "ok"];
-  if (status === 2) return ["Fehler", "error"];
-  return ["Nicht geladen", "warn"];
+  if (status === 1) return ["Downloaded", "ok"];
+  if (status === 2) return ["Error", "error"];
+  return ["Not downloaded", "warn"];
 }
 
 function formatDate(value) {

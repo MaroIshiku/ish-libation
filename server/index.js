@@ -141,11 +141,11 @@ async function getSetupSecretState() {
     const secret = raw.trim();
     if (secret) return { configured: true, source: "file", secret };
     if (explicitSecretFile) {
-      return { configured: false, source: "file", error: "ISHIKU_SETUP_SECRET_FILE ist leer." };
+      return { configured: false, source: "file", error: "ISHIKU_SETUP_SECRET_FILE is empty." };
     }
   } catch (error) {
     if (explicitSecretFile) {
-      return { configured: false, source: "file", error: "ISHIKU_SETUP_SECRET_FILE kann nicht gelesen werden." };
+      return { configured: false, source: "file", error: "ISHIKU_SETUP_SECRET_FILE cannot be read." };
     }
   }
 
@@ -155,7 +155,7 @@ async function getSetupSecretState() {
   return {
     configured: false,
     source: "missing",
-    error: "ISHIKU_SETUP_SECRET_FILE oder ISHIKU_SETUP_SECRET fehlt."
+    error: "ISHIKU_SETUP_SECRET_FILE or ISHIKU_SETUP_SECRET is missing."
   };
 }
 
@@ -201,15 +201,15 @@ function validateSetupInput(body, setupSecret) {
   const normalizedPassword = password.trim().toLowerCase();
   const errors = {};
 
-  if (!displayName) errors.displayName = "Anzeigename ist erforderlich.";
-  if (!username) errors.username = "Admin-Benutzername ist erforderlich.";
-  if (password.length < 12) errors.password = "Das Admin-Passwort muss mindestens 12 Zeichen lang sein.";
-  if (password && setupSecret && password === setupSecret) errors.password = "Das Admin-Passwort darf nicht dem Setup-Secret entsprechen.";
-  if (normalizedPassword && placeholderPasswords.has(normalizedPassword)) errors.password = "Bitte verwende kein Platzhalter-Passwort.";
+  if (!displayName) errors.displayName = "Display name is required.";
+  if (!username) errors.username = "Admin username is required.";
+  if (password.length < 12) errors.password = "Admin password must be at least 12 characters long.";
+  if (password && setupSecret && password === setupSecret) errors.password = "Admin password must not match the setup secret.";
+  if (normalizedPassword && placeholderPasswords.has(normalizedPassword)) errors.password = "Do not use a placeholder password.";
   if ([username.toLowerCase(), config.appId, config.appName.toLowerCase()].includes(normalizedPassword)) {
-    errors.password = "Das Admin-Passwort darf nicht Benutzername, App-ID oder App-Name sein.";
+    errors.password = "Admin password must not match the username, app ID, or app name.";
   }
-  if (password !== passwordConfirm) errors.passwordConfirm = "Die Passwoerter stimmen nicht ueberein.";
+  if (password !== passwordConfirm) errors.passwordConfirm = "Passwords do not match.";
 
   return {
     valid: Object.keys(errors).length === 0,
@@ -291,7 +291,7 @@ function registerFailedSetupAttempt(req) {
 function assertSetupRateLimit(req) {
   const attempt = setupAttempts.get(clientKey(req));
   if (attempt && attempt.resetAt > Date.now() && attempt.count >= 8) {
-    const error = new Error("Zu viele Setup-Versuche. Bitte spaeter erneut versuchen.");
+    const error = new Error("Too many setup attempts. Please try again later.");
     error.status = 429;
     throw error;
   }
@@ -317,14 +317,14 @@ async function createFirstAdmin(req, res, body) {
   assertSetupRateLimit(req);
   const store = await readAuthStore();
   if (hasAdmin(store)) {
-    const error = new Error("Setup ist bereits abgeschlossen.");
+    const error = new Error("Setup is already complete.");
     error.status = 409;
     throw error;
   }
 
   const secretState = await getSetupSecretState();
   if (!secretState.configured) {
-    const error = new Error(secretState.error || "Setup-Secret fehlt.");
+    const error = new Error(secretState.error || "Setup secret is missing.");
     error.status = 503;
     throw error;
   }
@@ -332,14 +332,14 @@ async function createFirstAdmin(req, res, body) {
   const submittedSecret = String(body.setupSecret || body.setup_secret || "");
   if (!submittedSecret.trim() || !secureCompare(submittedSecret, secretState.secret)) {
     registerFailedSetupAttempt(req);
-    const error = new Error("Setup-Secret ist ungueltig.");
+    const error = new Error("Setup secret is invalid.");
     error.status = 403;
     throw error;
   }
 
   const validation = validateSetupInput(body, secretState.secret);
   if (!validation.valid) {
-    const error = new Error("Setup-Eingaben sind ungueltig.");
+    const error = new Error("Setup input is invalid.");
     error.status = 400;
     error.details = validation.errors;
     throw error;
@@ -368,7 +368,7 @@ async function createFirstAdmin(req, res, body) {
 async function login(req, res, body) {
   const store = await readAuthStore();
   if (!hasAdmin(store)) {
-    const error = new Error("Setup ist noch nicht abgeschlossen.");
+    const error = new Error("Setup is not complete yet.");
     error.status = 409;
     throw error;
   }
@@ -376,7 +376,7 @@ async function login(req, res, body) {
   const password = String(body.password || "");
   const user = store.admins.find((admin) => admin.username.toLowerCase() === username.toLowerCase());
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    const error = new Error("Benutzername oder Passwort ist ungueltig.");
+    const error = new Error("Username or password is invalid.");
     error.status = 401;
     throw error;
   }

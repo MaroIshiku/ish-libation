@@ -3,7 +3,7 @@
   "app_name": "Libiku",
   "app_subtitle": "Libation Web GUI",
   "app_symbol": "library",
-  "primary_purpose": "Libiku steuert Libation CLI im Browser und macht Audible-Bibliothek, Accounts, Jobs und Einstellungen in Docker erreichbar.",
+  "primary_purpose": "Libiku controls Libation CLI in the browser and makes the Audible library, accounts, jobs, and settings available in Docker.",
   "main_sections": ["dashboard", "library", "accounts", "settings"],
   "app_logo": {
     "src": "/assets/logos/libiku.png",
@@ -30,7 +30,7 @@
     "repository_name": "libiku",
     "github_owner": "MaroIshiku",
     "public_repository": true,
-    "short_description": "Docker-first Libation Web GUI im Pixel Soft Utility Designsystem.",
+    "short_description": "Docker-first Libation Web GUI in the Pixel Soft Utility design system.",
     "docker_image": "ghcr.io/maroishiku/libiku:latest",
     "codex_notice_enabled": true
   },
