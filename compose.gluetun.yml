@@ -37,13 +37,13 @@ services:
       - ishiku_setup_secret
     volumes:
       - type: bind
-        source: /media/ZimaOS-HD/AppData/libiku/config
+        source: /DATA/AppData/libiku/config
         target: /config
       - type: bind
-        source: /media/ZimaOS-HD/AppData/libiku/db
+        source: /DATA/AppData/libiku/db
         target: /db
       - type: bind
-        source: /media/ZimaOS-HD/AppData/libiku/data
+        source: /DATA/AppData/libiku/data
         target: /data
     devices: []
     cap_add: []
@@ -101,7 +101,7 @@ services:
         protocol: tcp
     volumes:
       - type: bind
-        source: /media/ZimaOS-HD/AppData/libiku/gluetun
+        source: /DATA/AppData/libiku/gluetun
         target: /gluetun
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9999 >/dev/null 2>&1 || exit 1"]

@@ -38,7 +38,7 @@ The first launch uses the shared admin setup with a Docker secret. After that, p
 Create a setup secret first:
 
 ```bash
-mkdir -p secrets
+mkdir -p /DATA/AppData/libiku/config /DATA/AppData/libiku/db /DATA/AppData/libiku/data secrets
 printf '%s\n' 'replace-with-a-long-random-secret' > secrets/setup_secret.txt
 ```
 
@@ -113,10 +113,10 @@ The Compose files use these paths by default:
 
 | Host path | Container path | Purpose |
 | --- | --- | --- |
-| `/media/ZimaOS-HD/AppData/libiku/config` | `/config` | Libation settings, accounts, and Libiku auth file |
-| `/media/ZimaOS-HD/AppData/libiku/db` | `/db` | Libation database |
-| `/media/ZimaOS-HD/AppData/libiku/data` | `/data` | Download output |
-| `/media/ZimaOS-HD/AppData/libiku/gluetun` | `/gluetun` | Gluetun state data in the VPN stack |
+| `/DATA/AppData/libiku/config` | `/config` | Libation settings, accounts, and Libiku auth file |
+| `/DATA/AppData/libiku/db` | `/db` | Libation database |
+| `/DATA/AppData/libiku/data` | `/data` | Download output |
+| `/DATA/AppData/libiku/gluetun` | `/gluetun` | Gluetun state data in the VPN stack |
 
 ## Security
 

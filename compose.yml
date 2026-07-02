@@ -1,3 +1,5 @@
+name: libiku
+
 services:
   libiku:
     image: ghcr.io/maroishiku/libiku:latest
@@ -22,9 +24,15 @@ services:
     secrets:
       - ishiku_setup_secret
     volumes:
-      - /media/ZimaOS-HD/AppData/libiku/config:/config
-      - /media/ZimaOS-HD/AppData/libiku/db:/db
-      - /media/ZimaOS-HD/AppData/libiku/data:/data
+      - type: bind
+        source: /DATA/AppData/libiku/config
+        target: /config
+      - type: bind
+        source: /DATA/AppData/libiku/db
+        target: /db
+      - type: bind
+        source: /DATA/AppData/libiku/data
+        target: /data
     ports:
       - "3100:3000/tcp"
     healthcheck:
