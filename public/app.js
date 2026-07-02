@@ -29,6 +29,14 @@ const modeLabels = { system: "System", light: "Light", dark: "Dark" };
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 
+function initialsFromName(value, fallback = "A") {
+  const parts = String(value || "").trim().split(/[\s._-]+/).filter(Boolean);
+  const initials = parts.length > 1
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`
+    : (parts[0] || fallback).slice(0, 2);
+  return initials.toUpperCase() || fallback;
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
@@ -92,7 +100,7 @@ function renderAuthGate() {
     appRoot.hidden = false;
     const displayName = session.user?.displayName || session.user?.username || "Admin";
     $("#signedInUser").textContent = displayName;
-    $("#profileButton").textContent = displayName.trim().slice(0, 1).toUpperCase() || "A";
+    $("#profileButton").textContent = initialsFromName(displayName);
     return;
   }
 
