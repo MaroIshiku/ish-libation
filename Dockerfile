@@ -31,7 +31,7 @@ RUN case "${TARGETARCH}" in \
       -p:PublishReadyToRun=true \
       -p:SelfContained=true
 
-FROM node:22-bookworm-slim
+FROM node:26-bookworm-slim
 
 ARG USER_UID=1001
 ARG USER_GID=1001
