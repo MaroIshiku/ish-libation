@@ -20,7 +20,7 @@
 }
 
 .psu-app-header__inner {
-  min-height: 64px;
+  min-height: var(--app-header-desktop-min-height);
   width: min(100%, var(--layout-desktop-max-width));
   margin-inline: auto;
   display: flex;
