@@ -100,7 +100,9 @@ function renderAuthGate() {
     appRoot.hidden = false;
     const displayName = session.user?.displayName || session.user?.username || "Admin";
     $("#signedInUser").textContent = displayName;
+    $("#settingsAccountName").textContent = displayName;
     $("#profileButton").textContent = initialsFromName(displayName);
+    $("#settingsAvatar").textContent = initialsFromName(displayName);
     return;
   }
 
